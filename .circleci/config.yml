@@ -99,19 +99,6 @@ commands:
           command: |
             go test -v ./tests/e2e/...
 jobs:
-  dep:
-    docker:
-      - image: circleci/golang:1.15
-        environment:
-          GO111MODULE: "on"
-    working_directory: /go/src/github.com/banzaicloud/helm-s3
-    steps:
-      - checkout
-      - run: make deps
-      - persist_to_workspace:
-          root: /go/src/github.com/banzaicloud
-          paths:
-            - helm-s3
   test-unit:
     docker:
       - image: circleci/golang:1.15

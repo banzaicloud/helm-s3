@@ -26,7 +26,7 @@ import (
 	"github.com/banzaicloud/helm-s3/internal/helmutil"
 )
 
-var version = "master"
+var version = "local"
 
 const (
 	actionVersion = "version"
