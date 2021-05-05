@@ -8,13 +8,13 @@ all: deps build
 
 .PHONY: deps
 deps:
-	@go mod download
-	@go mod vendor
-	@go mod tidy
+	@ go mod download
+	@ go mod vendor
+	@ go mod tidy
 
 .PHONY: build
 build:
-	@./hack/build.sh $(CURDIR) $(PKG)
+	@ ./hack/build.sh $(CURDIR) $(PKG)
 
 .PHONY: build-local
 build-local:
@@ -22,7 +22,7 @@ build-local:
 
 .PHONY: install
 install:
-	@./hack/install.sh
+	@ ./hack/install.sh
 
 .PHONY: test-unit
 test-unit:
@@ -34,4 +34,4 @@ test-e2e:
 
 .PHONY: test-e2e-local
 test-e2e-local:
-	@./hack/test-e2e-local.sh
+	@ ./hack/test-e2e-local.sh
