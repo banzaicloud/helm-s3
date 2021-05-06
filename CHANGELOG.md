@@ -60,7 +60,7 @@ that Helm v2 is still supported, and will be until the sunset of v2 (approximate
 - The plugin is now also distributed as Docker images. Images are pushed to Docker Hub tagged with plugin release 
 version and suffixed with Helm version. The image built from master branch is also available, note that it should be
 only used for playing and testing, it is **strongly discouraged** to use that image for production use cases. 
-Refer to https://hub.docker.com/r/hypnoglow/helm-s3 for details and all available tags.
+Refer to https://ghcr.io/banzaicloud/helm-s3 for details and all available tags.
 [Refs: [#79](https://github.com/hypnoglow/helm-s3/issues/79) [#88](https://github.com/hypnoglow/helm-s3/pull/88)]
 
 ### Changed

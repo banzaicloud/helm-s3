@@ -21,8 +21,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/hypnoglow/helm-s3/internal/awss3"
-	"github.com/hypnoglow/helm-s3/internal/awsutil"
+	"github.com/banzaicloud/helm-s3/internal/awss3"
+	"github.com/banzaicloud/helm-s3/internal/awsutil"
 )
 
 type proxyCmd struct {

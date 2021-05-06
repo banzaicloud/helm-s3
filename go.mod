@@ -1,4 +1,4 @@
-module github.com/hypnoglow/helm-s3
+module github.com/banzaicloud/helm-s3
 
 go 1.15
 

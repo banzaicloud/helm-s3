@@ -3,12 +3,12 @@ version: "0.10.0"
 usage: "Manage chart repositories on Amazon S3"
 description: |-
   The plugin allows to use s3 protocol to upload, fetch charts and to work with repositories.
-  https://github.com/hypnoglow/helm-s3
+  https://github.com/banzaicloud/helm-s3
 command: "$HELM_PLUGIN_DIR/bin/helms3"
 downloaders:
-- command: "bin/helms3"
-  protocols:
-    - "s3"
+  - command: "bin/helms3"
+    protocols:
+      - "s3"
 hooks:
   install: "cd $HELM_PLUGIN_DIR; ./hack/install.sh"
   update: "cd $HELM_PLUGIN_DIR; ./hack/install.sh"

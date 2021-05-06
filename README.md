@@ -1,12 +1,12 @@
-[![CircleCI](https://circleci.com/gh/hypnoglow/helm-s3/tree/master.svg?style=shield)](https://circleci.com/gh/hypnoglow/helm-s3/tree/master)
-[![License MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
-[![GitHub release](https://img.shields.io/github/release/hypnoglow/helm-s3.svg)](https://github.com/hypnoglow/helm-s3/releases)
+[![License](https://img.shields.io/github/license/banzaicloud/helm-s3.svg)](https://github.com/banzaicloud/helm-s3/tree/master/LICENSE)
+[![Release](https://img.shields.io/github/v/release/banzaicloud/helm-s3?sort=semver)](https://github.com/banzaicloud/helm-s3/releases)
+[![CI](https://github.com/banzaicloud/helm-s3/actions/workflows/ci.yml/badge.svg)](https://github.com/banzaicloud/helm-s3/actions/workflows/ci.yml)
 
 The Helm plugin that provides Amazon S3 protocol support.
 
 This allows you to have private or public Helm chart repositories hosted on Amazon S3. See [this guide](https://docs.aws.amazon.com/prescriptive-guidance/latest/patterns/set-up-a-helm-v3-chart-repository-in-amazon-s3.html) to get a detailed example use case overview.
 
-The plugin supports both Helm v2 and v3 (Helm v3 support is available since [v0.9.0](https://github.com/hypnoglow/helm-s3/releases/tag/v0.9.0)).
+The plugin supports both Helm v2 and v3 (Helm v3 support is available since [v0.9.0](https://github.com/banzaicloud/helm-s3/releases/tag/v0.9.0)).
 
 ## Table of contents
 
@@ -35,25 +35,23 @@ The plugin supports both Helm v2 and v3 (Helm v3 support is available since [v0.
 
 The installation itself is simple as:
 
-    $ helm plugin install https://github.com/hypnoglow/helm-s3.git
+    $ helm plugin install https://github.com/banzaicloud/helm-s3.git
 
 You can install a specific release version:
 
-    $ helm plugin install https://github.com/hypnoglow/helm-s3.git --version 0.10.0
+    $ helm plugin install https://github.com/banzaicloud/helm-s3.git --version 0.10.0
 
 To use the plugin, you do not need any special dependencies. The installer will
-download versioned release with prebuilt binary from [github releases](https://github.com/hypnoglow/helm-s3/releases).
+download versioned release with prebuilt binary from [github releases](https://github.com/banzaicloud/helm-s3/releases).
 However, if you want to build the plugin from source, or you want to contribute
 to the plugin, please see [these instructions](.github/CONTRIBUTING.md).
 
 ### Docker Images
 
-[![Docker Pulls](https://img.shields.io/docker/pulls/hypnoglow/helm-s3)](https://hub.docker.com/r/hypnoglow/helm-s3)
-
-The plugin is also distributed as Docker images. Images are pushed to Docker Hub tagged with plugin release 
+The plugin is also distributed as Docker images. Images are pushed to Docker Hub tagged with plugin release
 version and suffixed with Helm version. The image built from master branch is also available, note that it should be
-only used for playing and testing, it is **strongly discouraged** to use that image for production use cases. 
-Refer to https://hub.docker.com/r/hypnoglow/helm-s3 for details and all available tags.
+only used for playing and testing, it is **strongly discouraged** to use that image for production use cases.
+Refer to https://ghcr.io/banzaicloud/helm-s3 for details and all available tags.
 
 ## Configuration
 
@@ -132,12 +130,12 @@ Example:
     # We have Helm version 3:
     $ helm version --short
     v3.0.2+g19e47ee
-    
+
     # For some reason, the plugin detects Helm version badly:
     $ helm s3 version --mode
     helm-s3 plugin version: 0.9.2
     Helm version mode: v2
-    
+
     # Force the plugin to operate in v3 mode:
     $ HELM_S3_MODE=3 helm s3 version --mode
     helm-s3 plugin version: 0.9.2
@@ -145,7 +143,7 @@ Example:
 
 ## Usage
 
-*Note: some Helm CLI commands in v3 are incompatible with v2. Example commands below are provided for v2. For commands 
+*Note: some Helm CLI commands in v3 are incompatible with v2. Example commands below are provided for v2. For commands
 different in v3 there is a tip 💡 below each example.*
 
 For now let's omit the process of uploading repository index and charts to s3 and assume
@@ -172,11 +170,11 @@ To install the chart:
 Fetching also works:
 
     $ helm fetch coolchart/epicservice --version "0.5.1"
-    
+
 Alternatively:
 
     $ helm fetch s3://bucket-name/charts/epicservice-0.5.1.tgz
-    
+
 💡 *For Helm v3, use `helm pull coolchart/epicservice --version "0.5.1"`*
 
 ### Init
@@ -280,7 +278,7 @@ and others. To configure the plugin to work alternative S3 backend, just define
     $ export AWS_ENDPOINT=localhost:9000
     $ export AWS_DISABLE_SSL=true
 
-See [these integration tests](https://github.com/hypnoglow/helm-s3/blob/master/hack/test-e2e-local.sh) that use local minio docker container for a complete example.
+See [these integration tests](https://github.com/banzaicloud/helm-s3/blob/master/hack/test-e2e-local.sh) that use local minio docker container for a complete example.
 
 ### Using S3 bucket ServerSide Encryption
 

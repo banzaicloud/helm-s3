@@ -21,9 +21,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/hypnoglow/helm-s3/internal/awss3"
-	"github.com/hypnoglow/helm-s3/internal/awsutil"
-	"github.com/hypnoglow/helm-s3/internal/helmutil"
+	"github.com/banzaicloud/helm-s3/internal/awss3"
+	"github.com/banzaicloud/helm-s3/internal/awsutil"
+	"github.com/banzaicloud/helm-s3/internal/helmutil"
 )
 
 var (

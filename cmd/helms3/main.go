@@ -23,7 +23,7 @@ import (
 
 	"gopkg.in/alecthomas/kingpin.v2"
 
-	"github.com/hypnoglow/helm-s3/internal/helmutil"
+	"github.com/banzaicloud/helm-s3/internal/helmutil"
 )
 
 var (

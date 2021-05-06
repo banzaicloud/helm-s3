@@ -7,7 +7,7 @@ that downloads prebuilt versioned release of the plugin binary and installs it.
 To disable this behavior, you need to pass `HELM_S3_PLUGIN_NO_INSTALL_HOOK=true`
 to the installer:
 
-    $ HELM_S3_PLUGIN_NO_INSTALL_HOOK=true helm plugin install https://github.com/hypnoglow/helm-s3.git
+    $ HELM_S3_PLUGIN_NO_INSTALL_HOOK=true helm plugin install https://github.com/banzaicloud/helm-s3.git
     Development mode: not downloading versioned release.
     Installed plugin: s3
 
