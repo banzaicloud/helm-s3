@@ -1,10 +1,5 @@
-bin/*
-tmp
-releases
-vendor
+# Note: local build.
+bin/**
 
-.env
-coverage.txt
-
-.idea
-*.iml
+# Note: optional local dependency cache.
+vendor/**
