@@ -1,6 +1,15 @@
 # A Self-Documenting Makefile:
 # http://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 
+# Generic.
+ORGANIZATION ?= $$(basename $$(dirname $${PWD}))
+REPOSITORY ?= $$(basename $${PWD})
+
+# ---
+
+# Container.
+CONTAINER_IMAGE_NAME = $(ORGANIZATION)/$(REPOSITORY)
+
 # Git.
 GIT_DEFAULT_BRANCH = origin/main
 GIT_REFERENCE = $$(sed 's@ref: refs/heads/@@g' .git/HEAD)
@@ -35,6 +44,11 @@ build: ## build builds the local packages. You can set the version through the H
 	@ go install -ldflags "-X main.version=$(HELM_S3_PLUGIN_VERSION)" ./...
 	@ export GOBIN="$${PWD}/bin" ; go install -ldflags "-X main.version=$(HELM_S3_PLUGIN_VERSION)" ./...
 
+.PHONY: build-container
+build-container: ## build-container builds the project's container with the ${VERSION} tag (defaults to local).
+	@ echo "- Building container"
+	@ docker build --tag "$(CONTAINER_IMAGE_NAME):$(HELM_S3_PLUGIN_VERSION)" .
+
 .PHONY: build-latest
 build-latest: HELM_S3_PLUGIN_VERSION=$(HELM_S3_PLUGIN_LATEST_VERSION) ## build-latest builds the local packages with the latest version based on the plugin.yaml.
 build-latest: build
@@ -42,6 +56,11 @@ build-latest: build
 .PHONY: help
 help: ## help displays the help message.
 	@ grep -E '^[0-9a-zA-Z_-]+:.*## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-25s\033[0m %s\n", $$1, $$2}'
+
+.PHONY: run-container
+run-container: ## run-container runs the projects container in a throw-away context with the ${CMD} command as argument.
+	@ echo "- Running container"
+	@ docker run --interactive --rm --tty "$(CONTAINER_IMAGE_NAME):$(HELM_S3_PLUGIN_VERSION)" $(CMD)
 
 .PHONY: test-unit
 test-unit: ## test-unit runs the unit tests in the repository.
