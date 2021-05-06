@@ -1,12 +1,312 @@
+# options for analysis running
+run:
+  # by default isn't set. If set we pass it to "go list -mod={option}". From "go help modules":
+  # If invoked with -mod=readonly, the go command is disallowed from the implicit
+  # automatic updating of go.mod described above. Instead, it fails when any changes
+  # to go.mod are needed. This setting is most useful to check that go.mod does
+  # not need updates, such as in a continuous integration and testing system.
+  # If invoked with -mod=vendor, the go command assumes that the vendor
+  # directory holds the correct copies of dependencies and ignores
+  # the dependency descriptions in go.mod.
+  modules-download-mode: readonly
+
+# output configuration options
+output:
+  # sorts results by: filepath, line and column
+  sort-results: true
+
+# all available settings of specific linters
+linters-settings:
+  cyclop:
+    # the maximal code complexity to report
+    max-complexity: 20
+
+  dupl:
+    # tokens count to trigger issue, 150 by default
+    threshold: 100
+
+  errcheck:
+    # report about not checking of errors in type assertions: `a := b.(MyStruct)`;
+    # default is false: such cases aren't reported by default.
+    check-type-assertions: true
+
+  exhaustive:
+    # check switch statements in generated files also
+    check-generated: true
+    # indicates that switch statements are to be considered exhaustive if a
+    # 'default' case is present, even if all enum members aren't listed in the
+    # switch
+    default-signifies-exhaustive: true
+
+  forbidigo:
+    # Forbid the following identifiers
+    forbid:
+      - ^$ # Note: turning off default fmt\.Print.* rule.
+
+  funlen:
+    lines: 60
+    statements: 40
+
+  gci:
+    # put imports beginning with prefix after 3rd-party packages;
+    # only support one prefix
+    # if not set, use goimports.local-prefixes
+    local-prefixes: github.com/banzaicloud/helm-s3
+
+  gocognit:
+    # minimal code complexity to report, 30 by default (but we recommend 10-20)
+    min-complexity: 20
+
+  nestif:
+    # minimal complexity of if statements to report, 5 by default
+    min-complexity: 4
+
+  goconst:
+    # minimal length of string constant, 3 by default
+    min-len: 1
+    # minimal occurrences count to trigger, 3 by default
+    min-occurrences: 2
+
+  gocritic:
+    # Enable multiple checks by tags, run `GL_DEBUG=gocritic golangci-lint run` to see all tags and checks.
+    # Empty list by default. See https://github.com/go-critic/go-critic#usage -> section "Tags".
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+
+    # Settings passed to gocritic.
+    # The settings key is the name of a supported gocritic checker.
+    # The list of supported checkers can be find in https://go-critic.github.io/overview.
+    settings:
+      rangeValCopy:
+        # size in bytes that makes the warning trigger (default 128)
+        sizeThreshold: 32
+      unnamedResult:
+        # whether to check exported functions
+        checkExported: true
+
+  gocyclo:
+    # minimal code complexity to report, 30 by default (but we recommend 10-20)
+    min-complexity: 20
+
+  godot:
+    # comments to be checked: `declarations`, `toplevel`, or `all`
+    scope: all
+    # check that each sentence starts with a capital letter
+    capital: true
+
+  gofumpt:
+    # Choose whether or not to use the extra rules that are disabled
+    # by default
+    extra-rules: true
+
+  goheader:
+    values:
+      const:
+        # define here const type values in format k:v, for example:
+        # COMPANY: MY COMPANY
+        company: Banzai Cloud
+      regexp:
+        # define here regexp type values, for example
+        # AUTHOR: .*@mycompany\.com
+        later-year: "20(2[1-9]|[3-9][0-9])"
+    template: |-
+      Copyright © {{ later-year }} {{ company }}
+
+      Licensed under the Apache License, Version 2.0 (the "License");
+      you may not use this file except in compliance with the License.
+      You may obtain a copy of the License at
+
+          http://www.apache.org/licenses/LICENSE-2.0
+
+      Unless required by applicable law or agreed to in writing, software
+      distributed under the License is distributed on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+      See the License for the specific language governing permissions and
+      limitations under the License.
+
+  goimports:
+    # put imports beginning with prefix after 3rd-party packages;
+    # it's a comma-separated list of prefixes
+    local-prefixes: github.com/banzaicloud/helm-s3
+
+  gomoddirectives:
+    # List of allowed `replace` directives. Default is empty.
+    replace-allow-list:
+      - github.com/docker/distribution # Note: legacy, temporary.
+      - github.com/docker/docker # Note: legacy, temporary.
+
+  gosec:
+    # To specify a set of rules to explicitly exclude.
+    # Available rules: https://github.com/securego/gosec#available-rules
+    excludes: []
+
+    config:
+      G306: "0600"
+
+  gosimple:
+    # Select the Go version to target. The default is '1.13'.
+    go: "1.16"
+
+  govet:
+    # report about shadowed variables
+    check-shadowing: true
+    enable-all: true
+
+  ifshort:
+    # Maximum length of variable declaration measured in number of lines, after which linter won't suggest using short syntax.
+    # Has higher priority than max-decl-chars.
+    max-decl-lines: 1
+    # Maximum length of variable declaration measured in number of characters, after which linter won't suggest using short syntax.
+    max-decl-chars: 30
+
+  nakedret:
+    # make an issue if func has more lines of code than this setting and it has naked returns; default is 30
+    max-func-lines: 0
+
+  predeclared:
+    # include method names and field names (i.e., qualified names) in checks
+    q: true
+
+  nolintlint:
+    # Enable to ensure that nolint directives are all used. Default is true.
+    allow-unused: false
+    # Enable to require an explanation of nonzero length after each nolint directive. Default is false.
+    require-explanation: true
+    # Enable to require nolint directives to mention the specific linter being suppressed. Default is false.
+    require-specific: true
+
+  revive:
+    # see https://github.com/mgechev/revive#available-rules for details.
+    ignore-generated-header: false
+    severity: error
+
+  staticcheck:
+    # Select the Go version to target. The default is '1.13'.
+    go: "1.16"
+
+  stylecheck:
+    # Select the Go version to target. The default is '1.13'.
+    go: "1.16"
+
+  unused:
+    # Select the Go version to target. The default is '1.13'.
+    go: "1.16"
+
+  wrapcheck:
+    # An array of strings that specify substrings of signatures to ignore.
+    # If this set, it will override the default set of ignored signatures.
+    # See https://github.com/tomarrell/wrapcheck#configuration for more information.
+    ignoreSigs:
+      - errors.New(
+      - errors.Unwrap(
+      - .Errorf(
+      - .Wrap(
+      - .Wrapf(
+      - .WrapWithDetails(
+      - .WithDetails(
+      - .WithMessage(
+
+  wsl:
+    force-err-cuddling: true
+
+# Last updated: 1.40.1
 linters:
-  enable-all: true
-  disable:
+  enable:
+    - asciicheck
+    - bodyclose
+    - cyclop
+    - deadcode
+    - depguard
+    - dogsled
     - dupl
+    - durationcheck
+    - errcheck
+    - errorlint
+    - exhaustive
+    - exhaustivestruct
+    - exportloopref
+    - forbidigo
+    - forcetypeassert
     - funlen
+    - gci
     - gochecknoglobals
+    - gochecknoinits
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
     - godox
+    - goerr113
+    - gofmt
+    - gofumpt
+    - goheader
+    - goimports
+    - gomnd
+    - gomoddirectives
+    - gomodguard
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - ifshort
+    - importas
+    - ineffassign
     - lll
+    - makezero
+    - megacheck
+    - misspell
+    - nakedret
+    - nestif
+    - nilerr
+    - nlreturn
+    - noctx
+    - nolintlint
+    - paralleltest
+    - prealloc
+    - predeclared
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - staticcheck
+    - structcheck
+    - stylecheck
+    - thelper
+    - tparallel
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - varcheck
+    - wastedassign
+    - whitespace
+    - wrapcheck
     - wsl
+  disable:
+    - golint # Note: deprecated, archived since v1.41.0.
+    - interfacer # Note: deprecated, also prone to false positives.
+    - maligned # Note: replaced by govet 'fieldalignment'.
+    - scopelint # Note: replaced by exportloopref.
+    - tagliatelle # Note: unfortunately YAML casing is varying and struct keys are not always under our control.
+    - testpackage # Note: I prefer using whitebox unit testing methods as well.
+  disable-all: false
+  fast: false
 
 issues:
-  new-from-rev: master
+  # Fix found issues (if it's supported by the linter)
+  fix: true
+
+severity:
+  # Default value is empty string.
+  # Set the default severity for issues. If severity rules are defined and the issues
+  # do not match or no severity is provided to the rule this will be the default
+  # severity applied. Severities should match the supported severity names of the
+  # selected out format.
+  # - Code climate: https://docs.codeclimate.com/docs/issues#issue-severity
+  # -   Checkstyle: https://checkstyle.sourceforge.io/property_types.html#severity
+  # -       Github: https://help.github.com/en/actions/reference/workflow-commands-for-github-actions#setting-an-error-message
+  default-severity: error
