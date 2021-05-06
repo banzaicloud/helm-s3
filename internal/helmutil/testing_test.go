@@ -1,6 +1,6 @@
 package helmutil
 
-// this file contains utilities for testing code in this package.
+// This file contains utilities for testing code in this package.
 
 import (
 	"os"

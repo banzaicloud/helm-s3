@@ -12,7 +12,9 @@ import (
 	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/repo"
-	"k8s.io/helm/pkg/urlutil" // Note that this is from Helm v2 SDK because in Helm v3 this package is internal.
+
+	// Note that this is from Helm v2 SDK because in Helm v3 this package is internal.
+	"k8s.io/helm/pkg/urlutil"
 	"sigs.k8s.io/yaml"
 )
 
@@ -85,7 +87,7 @@ func (idx *IndexV3) AddOrReplace(metadata interface{}, filename, baseURL, digest
 		}
 	}
 
-	// Otherwise just add to the list of versions
+	// Otherwise just add to the list of versions.
 	idx.index.Entries[md.Name] = append(entry, cr)
 	return nil
 }

@@ -38,8 +38,8 @@ generated: 2018-01-01T00:00:00Z
 	err := idx.UnmarshalBinary(input)
 	require.NoError(t, err)
 
-	assert.Equal(t, "foo", idx.index.APIVersion)
-	assert.Equal(t, time.Date(2018, 01, 01, 0, 0, 0, 0, time.UTC), idx.index.Generated)
+	require.Equal(t, "foo", idx.index.APIVersion)
+	require.Equal(t, time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC), idx.index.Generated)
 }
 
 func TestIndexV3_AddOrReplace(t *testing.T) {

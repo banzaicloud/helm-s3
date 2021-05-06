@@ -75,7 +75,7 @@ func TestRepoEntryV2_IndexURL(t *testing.T) {
 }
 
 func TestRepoEntryV2_CacheFile(t *testing.T) {
-	// mock helm2 home
+	// Mock helm2 home.
 	helm2Home = "/home/foo/.helm"
 
 	testCases := map[string]struct {

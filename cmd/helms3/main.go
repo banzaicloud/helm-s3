@@ -26,9 +26,7 @@ import (
 	"github.com/banzaicloud/helm-s3/internal/helmutil"
 )
 
-var (
-	version = "master"
-)
+var version = "master"
 
 const (
 	actionVersion = "version"
@@ -40,7 +38,7 @@ const (
 	defaultTimeout       = time.Minute * 5
 	defaultTimeoutString = "5m"
 
-	// duplicated in e2e package for testing.
+	// Duplicated in e2e package for testing.
 	defaultChartsContentType = "application/gzip"
 
 	helpFlagTimeout = `Timeout for the whole operation to complete. Defaults to 5 minutes.

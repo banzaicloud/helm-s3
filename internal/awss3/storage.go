@@ -34,10 +34,10 @@ import (
 )
 
 const (
-	// selects serverside encryption for bucket
+	// Selects serverside encryption for bucket.
 	awsS3encryption = "AWS_S3_SSE"
 
-	// s3MetadataSoftLimitBytes is application-specific soft limit
+	// S3MetadataSoftLimitBytes is application-specific soft limit
 	// for the number of bytes in S3 object metadata.
 	s3MetadataSoftLimitBytes = 1900
 )
@@ -55,7 +55,7 @@ func New(session *session.Session) *Storage {
 	return &Storage{session: session}
 }
 
-// Returns desired encryption
+// Returns desired encryption.
 func getSSE() *string {
 	sse := os.Getenv(awsS3encryption)
 	if sse == "" {
@@ -120,7 +120,7 @@ func (s *Storage) traverse(ctx context.Context, repoURI string, items chan<- Cha
 			if !strings.HasSuffix(key, ".tgz") {
 				// Ignore any file that isn't a chart
 				// This could include index.yaml
-				// or any other kind of file that might be in the repo
+				// or any other kind of file that might be in the repo.
 				continue
 			}
 
@@ -186,7 +186,7 @@ func (s *Storage) traverse(ctx context.Context, repoURI string, items chan<- Cha
 				reindexItem.Hash = *chartDigest
 			}
 
-			// process meta and hash
+			// Process meta and hash.
 			items <- reindexItem
 		}
 
@@ -206,7 +206,7 @@ type ChartInfo struct {
 }
 
 // FetchRaw downloads the object from URI and returns it in the form of byte slice.
-// uri must be in the form of s3 protocol: s3://bucket-name/key[...].
+// Uri must be in the form of s3 protocol: s3://bucket-name/key[...].
 func (s *Storage) FetchRaw(ctx context.Context, uri string) ([]byte, error) {
 	bucket, key, err := parseURI(uri)
 	if err != nil {
@@ -259,8 +259,16 @@ func (s *Storage) Exists(ctx context.Context, uri string) (bool, error) {
 }
 
 // PutChart puts the chart file to the storage.
-// uri must be in the form of s3 protocol: s3://bucket-name/key[...].
-func (s *Storage) PutChart(ctx context.Context, uri string, r io.Reader, chartMeta, acl string, chartDigest string, contentType string) (string, error) {
+// Uri must be in the form of s3 protocol: s3://bucket-name/key[...].
+func (s *Storage) PutChart(
+	ctx context.Context,
+	uri string,
+	r io.Reader,
+	chartMeta string,
+	acl string,
+	chartDigest string,
+	contentType string,
+) (string, error) {
 	bucket, key, err := parseURI(uri)
 	if err != nil {
 		return "", err
@@ -285,8 +293,8 @@ func (s *Storage) PutChart(ctx context.Context, uri string, r io.Reader, chartMe
 }
 
 // PutIndex puts the index file to the storage.
-// uri must be in the form of s3 protocol: s3://bucket-name/key[...].
-func (s *Storage) PutIndex(ctx context.Context, uri string, acl string, r io.Reader) error {
+// Uri must be in the form of s3 protocol: s3://bucket-name/key[...].
+func (s *Storage) PutIndex(ctx context.Context, uri, acl string, r io.Reader) error {
 	if strings.HasPrefix(uri, "index.yaml") {
 		return errors.New("uri must not contain \"index.yaml\" suffix, it appends automatically")
 	}
@@ -313,7 +321,7 @@ func (s *Storage) PutIndex(ctx context.Context, uri string, acl string, r io.Rea
 }
 
 // Delete deletes the object by uri.
-// uri must be in the form of s3 protocol: s3://bucket-name/key[...].
+// Uri must be in the form of s3 protocol: s3://bucket-name/key[...].
 func (s *Storage) Delete(ctx context.Context, uri string) error {
 	bucket, key, err := parseURI(uri)
 	if err != nil {
@@ -336,7 +344,7 @@ func (s *Storage) Delete(ctx context.Context, uri string) error {
 
 // parseURI returns bucket and key from URIs like:
 // - s3://bucket-name/dir
-// - s3://bucket-name/dir/file.ext
+// - s3://bucket-name/dir/file.ext.
 func parseURI(uri string) (bucket, key string, err error) {
 	if !strings.HasPrefix(uri, "s3://") {
 		return "", "", fmt.Errorf("uri %s protocol is not s3", uri)
@@ -385,9 +393,9 @@ func objectMetadataSize(m map[string]*string) int {
 }
 
 const (
-	// metaChartMetadata is a s3 object metadata key that represents chart metadata.
+	// MetaChartMetadata is a s3 object metadata key that represents chart metadata.
 	metaChartMetadata = "chart-metadata"
 
-	// metaChartDigest is a s3 object metadata key that represents chart digest.
+	// MetaChartDigest is a s3 object metadata key that represents chart digest.
 	metaChartDigest = "chart-digest"
 )

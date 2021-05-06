@@ -37,12 +37,12 @@ var (
 )
 
 type pushAction struct {
-	// required parameters
+	// Required parameters.
 
 	chartPath string
 	repoName  string
 
-	// optional parameters and flags
+	// Optional parameters and flags.
 
 	force          bool
 	dryRun         bool
@@ -90,7 +90,7 @@ func (act pushAction) Run(ctx context.Context) error {
 	}
 
 	if cachedIndex, err := helmutil.LoadIndex(repoEntry.CacheFile()); err == nil {
-		// if cached index exists, check if the same chart version exists in it.
+		// If cached index exists, check if the same chart version exists in it.
 		if cachedIndex.Has(chart.Name(), chart.Version()) {
 			if act.ignoreIfExists {
 				return nil
@@ -99,7 +99,7 @@ func (act pushAction) Run(ctx context.Context) error {
 				return ErrChartExists
 			}
 
-			// fallthrough on --force
+			// Fallthrough on --force.
 		}
 	}
 
@@ -126,7 +126,7 @@ func (act pushAction) Run(ctx context.Context) error {
 			return ErrChartExists
 		}
 
-		// fallthrough on --force
+		// Fallthrough on --force.
 	}
 
 	if !act.dryRun {

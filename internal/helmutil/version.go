@@ -15,7 +15,7 @@ func IsHelm3() bool {
 	case "3", "v3":
 		return true
 	default:
-		// continue to other detection methods.
+		// Continue to other detection methods.
 	}
 
 	if os.Getenv("TILLER_HOST") != "" {

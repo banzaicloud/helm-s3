@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/cli"
-
 	"github.com/stretchr/testify/assert"
+	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/repo"
 )
 
@@ -77,7 +76,7 @@ func TestRepoEntryV3_IndexURL(t *testing.T) {
 }
 
 func TestRepoEntryV3_CacheFile(t *testing.T) {
-	// mock helm3 env
+	// Mock helm3 env.
 	helm3Env = cli.New()
 	helm3Env.RepositoryCache = "/home/foo/.cache/helm/repository"
 
