@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/helm/pkg/repo"
 )
 
@@ -36,7 +36,7 @@ func TestRepoEntryV2_URL(t *testing.T) {
 	for name, tc := range testCases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, tc.url, tc.entry.URL())
+			require.Equal(t, tc.url, tc.entry.URL())
 		})
 	}
 }
@@ -69,7 +69,7 @@ func TestRepoEntryV2_IndexURL(t *testing.T) {
 	for name, tc := range testCases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, tc.url, tc.entry.IndexURL())
+			require.Equal(t, tc.url, tc.entry.IndexURL())
 		})
 	}
 }
@@ -127,7 +127,7 @@ func TestRepoEntryV2_CacheFile(t *testing.T) {
 	for name, tc := range testCases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, tc.cacheFile, tc.entry.CacheFile())
+			require.Equal(t, tc.cacheFile, tc.entry.CacheFile())
 		})
 	}
 }
@@ -209,7 +209,7 @@ func TestLookupV2(t *testing.T) {
 
 			entry, err := lookupV2(tc.name)
 			assertError(t, err, tc.expectError)
-			assert.Equal(t, tc.expectedEntry, entry)
+			require.Equal(t, tc.expectedEntry, entry)
 		})
 	}
 }

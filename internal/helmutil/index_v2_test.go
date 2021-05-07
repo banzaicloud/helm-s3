@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/repo"
@@ -25,7 +24,7 @@ func TestIndexV2_MarshalBinary(t *testing.T) {
 entries: null
 generated: "2018-01-01T00:00:00Z"
 `
-	assert.Equal(t, expected, string(b))
+	require.Equal(t, expected, string(b))
 }
 
 func TestIndexV2_UnmarshalBinary(t *testing.T) {
@@ -57,7 +56,7 @@ func TestIndexV2_AddOrReplace(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		assert.Equal(t, "http://example.com/charts/foo-0.1.0.tgz", i.index.Entries["foo"][0].URLs[0])
+		require.Equal(t, "http://example.com/charts/foo-0.1.0.tgz", i.index.Entries["foo"][0].URLs[0])
 	})
 
 	t.Run("should add a new version of a chart", func(t *testing.T) {
@@ -87,8 +86,8 @@ func TestIndexV2_AddOrReplace(t *testing.T) {
 
 		i.SortEntries()
 
-		assert.Equal(t, "http://example.com/charts/foo-0.1.1.tgz", i.index.Entries["foo"][0].URLs[0])
-		assert.Equal(t, "sha256:222", i.index.Entries["foo"][0].Digest)
+		require.Equal(t, "http://example.com/charts/foo-0.1.1.tgz", i.index.Entries["foo"][0].URLs[0])
+		require.Equal(t, "sha256:222", i.index.Entries["foo"][0].Digest)
 	})
 
 	t.Run("should replace existing chart version", func(t *testing.T) {
@@ -118,7 +117,7 @@ func TestIndexV2_AddOrReplace(t *testing.T) {
 
 		require.Len(t, i.index.Entries, 1)
 
-		assert.Equal(t, "http://example.com/charts/foo-0.1.0.tgz", i.index.Entries["foo"][0].URLs[0])
-		assert.Equal(t, "sha256:222", i.index.Entries["foo"][0].Digest)
+		require.Equal(t, "http://example.com/charts/foo-0.1.0.tgz", i.index.Entries["foo"][0].URLs[0])
+		require.Equal(t, "sha256:222", i.index.Entries["foo"][0].Digest)
 	})
 }

@@ -3,7 +3,7 @@ package helmutil
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v3/pkg/cli"
 	repo3 "helm.sh/helm/v3/pkg/repo"
 	repo2 "k8s.io/helm/pkg/repo"
@@ -84,7 +84,7 @@ func TestLookupRepoEntry(t *testing.T) {
 
 			entry, err := LookupRepoEntry(tc.name)
 			assertError(t, err, tc.expectError)
-			assert.Equal(t, tc.expectedEntry, entry)
+			require.Equal(t, tc.expectedEntry, entry)
 		})
 	}
 }
