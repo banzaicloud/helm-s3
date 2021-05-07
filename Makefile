@@ -22,6 +22,7 @@ GO_ROOT_MODULE_PKG ?= $$(awk 'NR == 1 {print $$2 ; exit}' go.mod)
 
 # Helm S3 plugin.
 HELM_S3_PLUGIN_LATEST_VERSION ?= $$(awk '/^version:/ {print $$2 ; exit}' plugin.yaml)
+HELM_S3_PLUGIN_NAME ?= s3
 HELM_S3_PLUGIN_VERSION ?= $(GIT_REF)
 
 .PHONY: all
@@ -55,6 +56,15 @@ build-latest: build
 .PHONY: help
 help: ## help displays the help message.
 	@ grep -E '^[0-9a-zA-Z_-]+:.*## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-25s\033[0m %s\n", $$1, $$2}'
+
+.PHONY: install-plugin-local
+install-plugin-local: ## install-plugin-local installs the Helm plugin with 'local' version.
+	@ echo "- Installing plugin locally"
+	@ if helm plugin list | grep -q $(HELM_S3_PLUGIN_NAME); then \
+		helm plugin remove $(HELM_S3_PLUGIN_NAME) ; \
+	fi
+	@ export HELM_PLUGIN_INSTALL_LOCAL=1 ; \
+		helm plugin install .
 
 .PHONY: run-container
 run-container: ## run-container runs the projects container in a throw-away context with the ${CMD} command as argument.

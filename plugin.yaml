@@ -2,14 +2,22 @@ name: s3
 version: 0.10.0
 usage: Manage chart repositories on Amazon S3
 description: |-
-  The plugin allows to use s3 protocol to upload, fetch charts and to work with repositories.
+  Adds s3 protocol support to Helm operations.
   https://github.com/banzaicloud/helm-s3
+
+  Supported architectures:
+    - amd64
+    - arm64
+
+  Supported operating systems:
+    - darwin
+    - linux
 ignoreFlags: false
-command: $HELM_PLUGIN_DIR/bin/helms3
+command: "${HELM_PLUGIN_DIR}/bin/helms3"
 downloaders:
   - command: bin/helms3
     protocols:
       - s3
 hooks:
-  install: cd $HELM_PLUGIN_DIR && ./hack/install.sh
-  update: cd $HELM_PLUGIN_DIR && ./hack/install.sh
+  install: (cd ${HELM_PLUGIN_DIR} && ./scripts/install_plugin.bash ;)
+  update: (cd ${HELM_PLUGIN_DIR} && ./scripts/install_plugin.bash ;)
