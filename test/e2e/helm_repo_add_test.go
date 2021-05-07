@@ -12,5 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package e2e contains end-to-end tests for helm-s3 plugin.
 package e2e
+
+import (
+	"path"
+)
+
+func (testSuite *EndToEndSuite) TestHelmRepoAdd() {
+	testName := path.Base(testSuite.T().Name())
+
+	bucketName := testSuite.AWSS3BucketName(testName)
+
+	repositoryName := bucketName
+	repositoryURI := helmS3RepositoryURI(bucketName)
+
+	// Note: undoing test setup.
+	removeHelmRepository(testSuite.T(), repositoryName)
+
+	addHelmRepository(testSuite.T(), repositoryName, repositoryURI)
+}
