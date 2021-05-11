@@ -1,5 +1,8 @@
 # Note: local build.
 bin/**
 
+# Note: goreleaser artifacts.
+dist/**
+
 # Note: optional local dependency cache.
 vendor/**
