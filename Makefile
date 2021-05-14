@@ -19,7 +19,34 @@ GIT_REFERENCE_HASH = $$(echo "$(GIT_REFERENCE)" | git log -n 1 --format='format:
 # Note: explicitly setting GOBIN for global build install (required for GitHub
 # Actions environment).
 export GOBIN ?= $(shell go env GOPATH)/bin
+GO_MAJOR_VERSION ?= 1
 GO_ROOT_MODULE_PKG ?= $$(awk 'NR == 1 {print $$2 ; exit}' go.mod)
+GO_TEST_COVERAGES = $$( \
+	go test -cover -covermode atomic $$(go list ./... | grep -v $(GO_ROOT_MODULE_PKG)/test/e2e) | \
+	jq --raw-input --slurp \
+		'[ split("\n") | .[] | select(. != "") | capture("(\\?|ok)\\s+(?<package>\\S+)\\s+([0-9.hmnµs]+\\s+coverage: (?<coverage>[0-9]+.[0-9]+)% of statements|\\[no test files\\])"; "gins") | .coverage = ( .coverage // "0.0" | tonumber ) ] | reduce .[] as $$entry ({}; . + { ($$entry.package): ($$entry.coverage) }) | . as $$coverages | $$coverages * { "average": ( $$coverages | add * 1000 / length | round / 1000 ) }' \
+)
+GO_TEST_COVERAGES_DEFAULT_BRANCH = $$( \
+	original_git_reference=$(GIT_REFERENCE) && \
+	git checkout -q "$(GIT_DEFAULT_BRANCH)" && \
+	go_test_coverages_default_branch="$(GO_TEST_COVERAGES)" && \
+	git checkout -q "$${original_git_reference}" && \
+	printf '%s' "$${go_test_coverages_default_branch}" | jq \
+)
+GO_VERSIONS = $$( \
+	curl -sSL \
+		-H "Accept: application/vnd.github.v3+json" \
+		https://raw.githubusercontent.com/actions/go-versions/main/versions-manifest.json | \
+		jq \
+)
+
+# Helm.
+HELM_VERSIONS ?= $$( \
+	curl -sSL \
+		-H "Accept: application/vnd.github.v3+json" \
+		https://api.github.com/repos/helm/helm/tags | \
+		jq '[ .[] | select(.name | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$$"; "gins")) | .name ]' \
+)
 
 # Helm S3 plugin.
 HELM_S3_PLUGIN_LATEST_VERSION ?= $$(awk '/^version:/ {print $$2 ; exit}' plugin.yaml)
@@ -64,6 +91,53 @@ build-container: ## build-container builds the project's container with the ${VE
 .PHONY: build-latest
 build-latest: HELM_S3_PLUGIN_VERSION=$(HELM_S3_PLUGIN_LATEST_VERSION) ## build-latest builds the local packages with the latest version based on the plugin.yaml.
 build-latest: build
+
+.PHONY: check-clean-git-state
+check-git-state-clean: ## check-git-state-clean ensures the Git state is clean (no file changes occurred compared to the current reference).
+	@ echo "- Checking Git state cleanliness"
+	@ if [ "$$(git status --porcelain)" != "" ]; then \
+		printf >&2 "Git state is not clean, not proceeding.\n\n" "$$(git diff)" ; \
+		exit 1 ; \
+	fi
+
+.PHONY: check-go-mod-integrity
+check-go-mod-integrity: check-git-state-clean ## check-go-mod-integrity checks wether the source code and the recorded go mod dependencies are in sync.
+	@ echo "- Checking Go module dependencies integrity"
+	@ go mod tidy
+	@ if [ "$$(git status --porcelain)" != "" ]; then \
+		printf >&2 '\n`go mod tidy` results in a dirty state, Go mod files are not in sync with the source code files, differences:\n\n%s\n\n' "$$(git diff)" ; \
+		git reset --hard ; \
+		exit 1 ; \
+	fi
+
+.PHONY: check-test-coverage-change
+check-test-coverage-change: check-git-state-clean ## check-test-coverage-change ensures the current Git reference test coverage doesn't decrease compared to the default branch test coverage.
+	@ echo "- Checking test coverage change"
+	@ jq \
+		--argjson DEFAULT_BRANCH "$(GO_TEST_COVERAGES_DEFAULT_BRANCH)" \
+		--argjson CURRENT_REFERENCE "$(GO_TEST_COVERAGES)" \
+		--exit-status \
+		--null-input \
+		'$$CURRENT_REFERENCE | keys | all(. as $$key | ($$DEFAULT_BRANCH[$$key] // 0.0) <= $$CURRENT_REFERENCE[$$key])' >/dev/null || \
+		( \
+			printf >&2 '%s test coverage decreased compared to %s (default branch) test coverage\n%s (default branch) test coverage: %s\n%s test coverage: %s\n\n' \
+				"$(GIT_REFERENCE)" "$(GIT_DEFAULT_BRANCH)" \
+				"$(GIT_DEFAULT_BRANCH)" "$(GO_TEST_COVERAGES_DEFAULT_BRANCH)" ; \
+				"$(GIT_REFERENCE)" "$(GO_TEST_COVERAGES)" \
+			exit 1 ; \
+		)
+
+.PHONY: get-go-latest-3-minor-versions-json
+get-go-latest-3-minor-versions-json: ## get-go-latest-3-minor-versions-json retrieves the latest 3 minor versions of the configured Go major version as a JSON array.
+	@ echo $(GO_VERSIONS) | jq --compact-output '[ .[].version | capture("(?<major>$(GO_MAJOR_VERSION))\\.(?<minor>[0-9]+)\\.(?<patch>[0-9]+)?"; "gins") ] | [ .[] | map_values(. | tonumber) ] | group_by(.minor) | [ ( .[] | max_by(.patch) ) ][-3:] | [ .[] | [ .major, .minor, .patch ] | join(".") ] | reverse'
+
+.PHONY: get-go-latest-version-json
+get-go-latest-version-json: ## get-go-latest-version-json retrieves the latest version of the configured Go major version as a JSON array.
+	@ echo $(GO_VERSIONS) | jq --compact-output '[ .[].version | capture("(?<major>$(GO_MAJOR_VERSION))\\.(?<minor>[0-9]+)\\.(?<patch>[0-9]+)?"; "gins") ] | [ .[] | map_values(. | tonumber) ] | group_by(.minor) | [ ( .[] | max_by(.patch) ) ][-1:] | [ .[] | [ .major, .minor, .patch ] | join(".") ] | reverse'
+
+.PHONY: get-helm-latest-version-json
+get-helm-latest-version-json: ## get-helm-latest-version retrieves the latest version of Helm as a JSON string.
+	@echo $(HELM_VERSIONS) | jq 'first(.[])'
 
 .PHONY: help
 help: ## help displays the help message.
@@ -123,6 +197,10 @@ teardown-e2e-test-env-force: ## teardown-e2e-test-env-force tears down the end t
 .PHONY: test
 test: test-unit test-e2e ## test runs all tests in the repository.
 
+.PHONY: test-coverage
+test-coverage: ## test-coverage generates data about the test coverage percentage of the code.
+	@ echo "$(GO_TEST_COVERAGES)" | jq
+
 .PHONY: test-unit
 test-unit: ## test-unit runs the unit tests in the repository.
 	@ echo "- Running unit tests"
@@ -135,7 +213,3 @@ test-e2e: reset-e2e-test-env install-plugin-local test-e2e-no-env teardown-e2e-t
 test-e2e-no-env: ## test-e2e-no-env runs the end to end tests without any modifications to the testing environment.
 	@ echo "- Running end to end tests"
 	@ go test -count 1 -v $(GO_ROOT_MODULE_PKG)/test/e2e
-
-.PHONY: vendor
-vendor: ## vendor downloads the dependencies to a local vendor folder.
-	@ go mod vendor

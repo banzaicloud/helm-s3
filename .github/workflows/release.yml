@@ -1,0 +1,244 @@
+name: Release
+
+on:
+  push: # Note: I'm dissatisfied with the workflow_run event's current UX (depending workflow not attached to commit/tag).
+    branches:
+      - main
+    tags:
+      - "*"
+  schedule:
+    - cron: "0 9 * * *"
+
+# Note: currently jobs.<job-id>.(runs-on|strategy) cannot use '${{ env }}'.
+# Until this is fixed, I'm moving static environment configuration into the
+# configure-environment job's outputs (originally it handled dynamically
+# determined values only).
+# env:
+
+jobs:
+  configure-environment:
+    name: Configure environment
+    runs-on: ${{ matrix.os }}
+    outputs:
+      architectures-json: '["amd64"]'
+      ci-workflow-name: CI
+      git-ref-basename: ${{ steps.set-git-ref-basename.outputs.git-ref-basename }}
+      github-organization: banzaicloud
+      github-repository: helm-s3
+      github-runner-default-os-json: '["ubuntu-latest"]' # Note: used for OS-independent jobs.
+      go-latest-version-json: ${{ steps.set-go-latest-version-json.outputs.go-latest-version-json }}
+      goreleaser-version: v0.164.0
+      helm-latest-version-json: ${{ steps.set-helm-latest-version-json.outputs.helm-latest-version-json }}
+      helm-versions-json: ${{ steps.set-helm-versions-json.outputs.helm-versions-json }}
+      image-name: "banzaicloud/helm-s3"
+    strategy:
+      fail-fast: true
+      matrix:
+        os: ["ubuntu-latest"] # Note: OS independent job. # TODO: until static global env can be used through ${{ env }}.
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set Git ref basename
+        id: set-git-ref-basename
+        run: echo ::set-output name=git-ref-basename::$(basename ${{ github.ref }})
+
+      - name: Set Go latest version JSON array
+        id: set-go-latest-version-json
+        run: echo ::set-output name=go-latest-version-json::$(make get-go-latest-version-json)
+
+      - name: Set Helm latest version JSON string
+        id: set-helm-latest-version-json
+        run: echo ::set-output name=helm-latest-version-json::$(make get-helm-latest-version-json)
+
+      - name: Set Helm versions JSON array
+        id: set-helm-versions-json
+        run: echo ::set-output name=helm-versions-json::[\"v2.17.0\", \"${{ fromJSON(steps.set-helm-latest-version-json.outputs.helm-latest-version-json) }}\"]
+
+  # Note: I'm dissatisfied with the workflow_run event's current UX (depending workflow not attached to commit/tag).
+  wait-successful-ci-workflow:
+    name: Waiting for CI workflow to finish successfully
+    needs:
+      - configure-environment
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: ${{ fromJSON(needs.configure-environment.outputs.github-runner-default-os-json) }} # Note: OS independent job.
+    steps:
+      - name: Wait for CI workflow to complete
+        run: |
+          check_interval_seconds=10
+          initial_wait_time_seconds=10
+          organization=${{ needs.configure-environment.outputs.github-organization }}
+          ref_basename=${{ needs.configure-environment.outputs.git-ref-basename }}
+          repository=${{ needs.configure-environment.outputs.github-repository }}
+
+          echo "${{ github.token }}" | gh auth login --with-token
+
+          # Note: waiting to ensure simultaneous workflow triggers have a chance to complete before accessing parallel workflow.
+          sleep ${initial_wait_time_seconds}
+
+          ci_workflow_run=$(gh api "repos/${organization}/${repository}/actions/runs?branch=${ref_basename}&event=push" | jq '[ .workflow_runs[] | select((.name == "${{ needs.configure-environment.outputs.ci-workflow-name }}") and (.head_sha == "${{ github.sha }}")) ] | first')
+          echo "${ci_workflow_run}" | jq
+
+          while echo "${ci_workflow_run}" | jq --exit-status '.status != "completed"' &>/dev/null;do
+            echo "Waiting for the workflow to complete"
+            sleep ${check_interval_seconds}
+
+            ci_workflow_run=$(gh api "repos/${organization}/${repository}/actions/runs?branch=${ref_basename}&event=push" | jq '[ .workflow_runs[] | select((.name == "${{ needs.configure-environment.outputs.ci-workflow-name }}") and (.head_sha == "${{ github.sha }}")) ] | first')
+            echo "${ci_workflow_run}" | jq
+          done
+
+      - name: Check successful CI workflow before release
+        run: |
+          organization=${{ needs.configure-environment.outputs.github-organization }}
+          ref_basename=${{ needs.configure-environment.outputs.git-ref-basename }}
+          repository=${{ needs.configure-environment.outputs.github-repository }}
+
+          echo "${{ github.token }}" | gh auth login --with-token
+
+          ci_workflow_run=$(gh api "repos/${organization}/${repository}/actions/runs?branch=${ref_basename}&event=push" | jq '[ .workflow_runs[] | select((.name == "${{ needs.configure-environment.outputs.ci-workflow-name }}") and (.head_sha == "${{ github.sha }}")) ] | first')
+          echo "${ci_workflow_run}" | jq
+
+          echo "${ci_workflow_run}" | jq --exit-status '(.status == "completed") and (.conclusion == "success")'
+
+  build-and-push-container:
+    name: Build and push container
+    needs:
+      - configure-environment
+      - wait-successful-ci-workflow
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        architecture: ${{ fromJSON(needs.configure-environment.outputs.architectures-json) }}
+        go-version: ${{ fromJSON(needs.configure-environment.outputs.go-latest-version-json) }}
+        helm-version: ${{ fromJSON(needs.configure-environment.outputs.helm-versions-json) }}
+        os: ${{ fromJSON(needs.configure-environment.outputs.github-runner-default-os-json) }} # Note: OS independent job.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set image tag
+        id: set-image-tag
+        run: |
+          echo ::set-output name=helm-image-version::$(helm_image_version=${{ matrix.helm-version }} && echo "${helm_image_version//v/}")
+
+          if ${{ startsWith(matrix.helm-version, 'v2.') }}; then
+            helm_major_version="v2"
+          elif ${{ startsWith(matrix.helm-version, 'v3.') }}; then
+            helm_major_version="v3"
+          fi
+
+          if [ "${{ github.event_name }}" == "schedule" ]; then
+            tag="scheduled-helm${{ matrix.helm-version }}"
+            echo ::set-output name=tag::${tag}
+            echo ::set-output name=image-tag::ghcr.io/${{ needs.configure-environment.outputs.image-name }}:${tag}
+          elif ${{ startsWith(github.ref, 'refs/heads/') }}; then
+            tag="${{ needs.configure-environment.outputs.git-ref-basename }}-helm${helm_major_version}"
+            tag="${tag/\//-}"
+            echo ::set-output name=tag::${tag}
+            echo ::set-output name=image-tag::ghcr.io/${{ needs.configure-environment.outputs.image-name }}:${tag}
+          elif ${{ startsWith(github.ref, 'refs/tags/') }}; then
+            tag="${{ needs.configure-environment.outputs.git-ref-basename }}-helm${helm_major_version}"
+            echo ::set-output name=tag::${tag}
+            echo ::set-output name=image-tag::ghcr.io/${{ needs.configure-environment.outputs.image-name }}:${tag}
+          else
+            printf >&2 "unexpected event or ref, event: %s, ref: %s, sha: %s" "${{ github.event_name }}" "${{ github.ref }}" "${{ github.sha }}"
+            exit 1
+          fi
+
+      - name: Setup Docker metadata
+        id: setup-docker-metadata
+        uses: docker/metadata-action@v3
+        with:
+          images: ghcr.io/${{ needs.configure-environment.outputs.image-name }}
+
+      - name: Setup Docker QEMU
+        uses: docker/setup-qemu-action@v1
+        with:
+          platforms: all
+
+      - name: Setup BuildX
+        id: setup-buildx
+        uses: docker/setup-buildx-action@v1
+        with:
+          install: true
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ github.token }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v2
+        with:
+          build-args: |
+            ARCH=${{ matrix.architecture }}
+            GO_VERSION=${{ matrix.go-version }}
+            HELM_PLUGIN_VERSION=${{ steps.set-image-tag.outputs.tag }}
+            HELM_VERSION=${{ steps.set-image-tag.outputs.helm-image-version }}
+          builder: ${{ steps.setup-buildx.outputs.name }}
+          context: "."
+          file: ./Dockerfile
+          platforms: linux/${{ matrix.architecture }}
+          push: true
+          tags: ${{ steps.set-image-tag.outputs.image-tag }}
+
+  create-git-tag-artifacts:
+    name: Create tag artifacts
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    needs:
+      - configure-environment
+      - wait-successful-ci-workflow
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        architecture: ${{ fromJSON(needs.configure-environment.outputs.architectures-json) }}
+        go-version: ${{ fromJSON(needs.configure-environment.outputs.go-latest-version-json) }}
+        os: ${{ fromJSON(needs.configure-environment.outputs.github-runner-default-os-json) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Set tag
+        id: set-tag
+        run: |
+          organization=${{ needs.configure-environment.outputs.github-organization }}
+          repository=${{ needs.configure-environment.outputs.github-repository }}
+          tag=${{ needs.configure-environment.outputs.git-ref-basename }}
+
+          echo "${{ github.token }}" | gh auth login --with-token
+
+          tag_sha=$(gh api repos/${organization}/${repository}/git/matching-refs/tags/${tag} | jq --raw-output '.[0].object.sha')
+          tag_details=$(gh api repos/${organization}/${repository}/git/tags/${tag_sha})
+          body=$(echo "${tag_details}" | jq --raw-output '.message' | awk '{ if($0 == "-----BEGIN PGP SIGNATURE-----") { exit } else { print $0 } }')
+          is_prerelease=$(echo "${tag}" | (grep -E -q "v?[0-9]+\.[0-9]+\.[0-9]+.+" && printf true) || printf false)
+
+          # Note: preparing release notes file for GoReleaser, but also keeping Git in a clean state.
+          echo "${body}" > /tmp/release_notes.md
+
+          echo ::set-output name=body::${body}
+          echo ::set-output name=is-prerelease::${is_prerelease}
+          echo ::set-output name=tag::${tag}
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          version: ${{ needs.configure-environment.outputs.goreleaser-version }}
+          args: release --config .goreleaser.yml --release-notes /tmp/release_notes.md --rm-dist
+          workdir: "."
+          install-only: false
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

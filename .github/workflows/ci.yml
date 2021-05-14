@@ -1,0 +1,295 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - "*"
+  schedule:
+    - cron: "0 9 * * *"
+
+# Note: currently jobs.<job-id>.(runs-on|strategy) cannot use '${{ env }}'.
+# Until this is fixed, I'm moving static environment configuration into the
+# configure-environment job's outputs (originally it handled dynamically
+# determined values only).
+#
+# env:
+
+jobs:
+  configure-environment:
+    name: Configure environment
+    runs-on: ${{ matrix.os }}
+    outputs:
+      git-default-branch: origin/main
+      github-api-host: https://api.github.com
+      github-api-version: "3"
+      github-organization: banzaicloud
+      github-repository: helm-s3
+      github-runner-default-os-json: '["ubuntu-latest"]' # Note: used for OS-independent jobs.
+      github-runner-oses-json: '["ubuntu-latest"]'
+      go-latest-3-minor-versions-json: ${{ steps.set-go-latest-3-minor-versions-json.outputs.go-latest-3-minor-versions-json }}
+      go-latest-version-json: ${{ steps.set-go-latest-version-json.outputs.go-latest-version-json }}
+      goflags: -mod=readonly
+      golangci-lint-version: v1.40.1
+      helm-latest-version-json: ${{ steps.set-helm-latest-version-json.outputs.helm-latest-version-json }}
+      helm-versions-json: ${{ steps.set-helm-versions-json.outputs.helm-versions-json }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: ["ubuntu-latest"] # Note: OS independent job. # TODO: until static global env can be used through ${{ env }}.
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set Go latest 3 minor versions JSON array
+        id: set-go-latest-3-minor-versions-json
+        run: echo ::set-output name=go-latest-3-minor-versions-json::$(make get-go-latest-3-minor-versions-json)
+
+      - name: Set Go latest version JSON array
+        id: set-go-latest-version-json
+        run: echo ::set-output name=go-latest-version-json::$(make get-go-latest-version-json)
+
+      - name: Set Helm latest version JSON string
+        id: set-helm-latest-version-json
+        run: echo ::set-output name=helm-latest-version-json::$(make get-helm-latest-version-json)
+
+      - name: Set Helm versions JSON array
+        id: set-helm-versions-json
+        run: echo ::set-output name=helm-versions-json::[\"v2.17.0\", \"${{ fromJSON(steps.set-helm-latest-version-json.outputs.helm-latest-version-json) }}\"]
+
+  check-git:
+    name: Check Git constraints
+    needs:
+      - configure-environment
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: ${{ fromJSON(needs.configure-environment.outputs.github-runner-default-os-json) }} # Note: OS independent job.
+    steps:
+      - name: Check unnecessary (rebase-removable) auto-generated merge commits
+        uses: gsactions/commit-message-checker@v1
+        with:
+          pattern: ^(?!Merge (branch '[^']+' into |pull request \#[1-9][0-9]* from ))(.*)$ # https://regex101.com/r/9CYsBr/1
+          error: There is an auto-generated merge commit on the branch/pull request which is unnecessary noise and should be removed by rebasing the branch.
+          excludeDescription: "true" # Note: we don't care about the PR description, only care about the automatic short message.
+          excludeTitle: "true" # Note: we don't care about the PR title, only care about the automatic short message.
+          checkAllCommitMessages: "true" # Note: all commit messages should be checked for a PR to prevent merging.
+          accessToken: ${{ secrets.GITHUB_TOKEN }} # Note: required to check older commit messages.
+
+  analyze-code:
+    name: Analyze code
+    needs:
+      - configure-environment
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        go-version: ${{ fromJSON(needs.configure-environment.outputs.go-latest-version-json) }} # Note: Go version independent job.
+        os: ${{ fromJSON(needs.configure-environment.outputs.github-runner-default-os-json) }} # Note: OS independent job.
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: ${{ needs.configure-environment.outputs.golangci-lint-version }}
+          args: --new-from-rev ${{ needs.configure-environment.outputs.git-default-branch }} --timeout 10m
+
+  build:
+    name: Build project binaries and libraries
+    needs:
+      - configure-environment
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        go-version: ${{ fromJSON(needs.configure-environment.outputs.go-latest-3-minor-versions-json) }}
+        os: ${{ fromJSON(needs.configure-environment.outputs.github-runner-oses-json) }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Cache Go module dependencies
+        id: cache-go-module-dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: go-mod-cache-${{ runner.os }}-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-mod-cache-${{ runner.os }}-${{ matrix.go-version }}
+            go-mod-cache-${{ runner.os }}
+            go-mod-cache
+
+      - name: Check Go modules dependency file integrity
+        run: make check-go-mod-integrity
+
+      - name: Build project binaries
+        run: make build
+
+      - name: Upload project binaries artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: go-bins-${{ runner.os }}-${{ matrix.go-version }}
+          path: bin
+          if-no-files-found: error
+          retention-days: 1
+
+  test-unit:
+    name: Run unit tests
+    needs:
+      - configure-environment
+      - build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        go-version: ${{ fromJSON(needs.configure-environment.outputs.go-latest-3-minor-versions-json) }}
+        os: ${{ fromJSON(needs.configure-environment.outputs.github-runner-oses-json) }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Cache Go module dependencies
+        id: cache-go-module-dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: go-mod-cache-${{ runner.os }}-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-mod-cache-${{ runner.os }}-${{ matrix.go-version }}
+            go-mod-cache-${{ runner.os }}
+            go-mod-cache
+
+      - name: Test (unit)
+        run: make test-unit
+
+  check-test-coverage-change:
+    name: Check test coverage change
+    needs:
+      - configure-environment
+      - build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        go-version: ${{ fromJSON(needs.configure-environment.outputs.go-latest-version-json) }} # Note: Go version independent job.
+        os: ${{ fromJSON(needs.configure-environment.outputs.github-runner-default-os-json) }} # Note: OS independent job.
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Cache Go module dependencies
+        id: cache-go-module-dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: go-mod-cache-${{ runner.os }}-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-mod-cache-${{ runner.os }}-${{ matrix.go-version }}
+            go-mod-cache-${{ runner.os }}
+            go-mod-cache
+
+      - name: Test coverage
+        run: make test-coverage
+
+      - name: Check test coverage integrity
+        run: make check-test-coverage-change
+
+  test-e2e:
+    name: Run end to end tests
+    needs:
+      - configure-environment
+      - build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        go-version: ${{ fromJSON(needs.configure-environment.outputs.go-latest-version-json) }}
+        helm-version: ${{ fromJSON(needs.configure-environment.outputs.helm-versions-json) }}
+        os: ${{ fromJSON(needs.configure-environment.outputs.github-runner-oses-json) }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Setup Helm
+        run: |
+          helm_archive_name="helm-${{ matrix.helm-version }}-linux-amd64.tar.gz"
+          curl -sSL https://get.helm.sh/${helm_archive_name} -o ./${helm_archive_name}
+          mkdir -p bin
+          tar -xzf ${helm_archive_name} -C bin
+          echo "${{ github.workspace }}/bin/linux-amd64" >> $GITHUB_PATH
+
+      - name: Initialize Helm v2 (required for plugin install before end to end test)
+        if: startsWith(matrix.helm-version, 'v2.')
+        run: helm init --client-only
+
+      - name: Cache Go module dependencies
+        id: cache-go-module-dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: go-mod-cache-${{ runner.os }}-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-mod-cache-${{ runner.os }}-${{ matrix.go-version }}
+            go-mod-cache-${{ runner.os }}
+            go-mod-cache
+
+      - name: Download project binaries artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: go-bins-${{ runner.os }}-${{ matrix.go-version }}
+          path: bin
+
+      - name: Set binary file permissions to executable
+        run: chmod +x bin/helms3
+
+      - name: Test (end to end)
+        run: make test-e2e
+
+  remove-temporary-artifacts:
+    name: Remove temporary artifacts
+    if: always()
+    needs:
+      - configure-environment
+      - build
+      - test-e2e
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        go-version: ${{ fromJSON(needs.configure-environment.outputs.go-latest-3-minor-versions-json) }} # Note: for GO version specific artifacts.
+        os: ${{ fromJSON(needs.configure-environment.outputs.github-runner-oses-json) }} # Note: for OS specific artifacts.
+    steps:
+      - name: Remove project binaries artifact
+        uses: geekyeggo/delete-artifact@v1
+        if: ${{ needs.build.result }} == "success"
+        with:
+          name: go-bins-${{ runner.os }}-${{ matrix.go-version }}
