@@ -37,3 +37,47 @@ func (testSuite *EndToEndSuite) TestHelmFetch() {
 	fetchHelmChart(testSuite.T(), repositoryName, chart.Name, chart.Version, path.Dir(temporaryLocalChartPath))
 	deleteFile(testSuite.T(), temporaryLocalChartPath)
 }
+
+func (testSuite *EndToEndSuite) TestHelmFetchWithNoRegion() { // nolint:dupl // Note: intentional.
+	testName := path.Base(testSuite.T().Name())
+
+	bucketName := testSuite.AWSS3BucketName(testName)
+	chart := exampleChart
+	s3Client := testSuite.AWSS3Client()
+
+	bucketRepositoryChartPath := helmS3RepositoryChartPath(chart.Name, chart.Version)
+	localChartPath := testChartPath(testSuite.T(), chart.Name, chart.Version)
+	repositoryName := bucketName
+	temporaryLocalChartPath := testSuite.TemporaryPath(testName, helmChartFileName(chart.Name, chart.Version))
+
+	setHelmS3Region(testSuite.T(), "")
+
+	pushHelmS3Chart(testSuite.T(), repositoryName, localChartPath)
+
+	_ = getAWSS3Object(testSuite.T(), s3Client, bucketName, bucketRepositoryChartPath)
+
+	fetchHelmChart(testSuite.T(), repositoryName, chart.Name, chart.Version, path.Dir(temporaryLocalChartPath))
+	deleteFile(testSuite.T(), temporaryLocalChartPath)
+}
+
+func (testSuite *EndToEndSuite) TestHelmFetchWithfixedRegion() { // nolint:dupl // Note: intentional.
+	testName := path.Base(testSuite.T().Name())
+
+	bucketName := testSuite.AWSS3BucketName(testName)
+	chart := exampleChart
+	s3Client := testSuite.AWSS3Client()
+
+	bucketRepositoryChartPath := helmS3RepositoryChartPath(chart.Name, chart.Version)
+	localChartPath := testChartPath(testSuite.T(), chart.Name, chart.Version)
+	repositoryName := bucketName
+	temporaryLocalChartPath := testSuite.TemporaryPath(testName, helmChartFileName(chart.Name, chart.Version))
+
+	setHelmS3Region(testSuite.T(), "ca-central-1")
+
+	pushHelmS3Chart(testSuite.T(), repositoryName, localChartPath)
+
+	_ = getAWSS3Object(testSuite.T(), s3Client, bucketName, bucketRepositoryChartPath)
+
+	fetchHelmChart(testSuite.T(), repositoryName, chart.Name, chart.Version, path.Dir(temporaryLocalChartPath))
+	deleteFile(testSuite.T(), temporaryLocalChartPath)
+}
