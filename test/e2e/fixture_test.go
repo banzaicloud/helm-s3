@@ -979,6 +979,15 @@ func searchHelmCharts(t *testing.T, repositoryName, chartName string) []helmChar
 	return charts
 }
 
+// setHelmS3Region sets the HELM_S3_REGION environment variable to the specified
+// value.
+func setHelmS3Region(t *testing.T, value string) {
+	t.Helper()
+
+	err := os.Setenv("HELM_S3_REGION", value)
+	require.NoError(t, err, "setting HELM_S3_REGION failed, value: %s", value)
+}
+
 // temporaryDirectoryPath returns a temporary directory path for the specified
 // path elements.
 func temporaryDirectoryPath(pathElements ...string) string {
