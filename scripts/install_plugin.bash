@@ -48,7 +48,7 @@ function get_first_binary() {
 
     local binary=""
     for candidate in "${candidates[@]}"; do
-        if which -s "${candidate}"; then
+        if which "${candidate}" &>/dev/null; then
             binary="${candidate}"
 
             break
