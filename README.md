@@ -343,4 +343,4 @@ instructions](.github/CONTRIBUTING.md) that will help you to develop the plugin.
 
 ## License
 
-[MIT](LICENSE)
+[Apache 2.0](LICENSE)
