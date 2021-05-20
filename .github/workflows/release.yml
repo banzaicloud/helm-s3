@@ -217,7 +217,7 @@ jobs:
         run: |
           organization=${{ needs.configure-environment.outputs.github-organization }}
           repository=${{ needs.configure-environment.outputs.github-repository }}
-          tag=${{ needs.configure-environment.outputs.git-ref-basename }}
+          tag=${{ needs.configure-environment.outputs.git-refname }}
 
           echo "${{ github.token }}" | gh auth login --with-token
 
