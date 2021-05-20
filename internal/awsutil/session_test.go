@@ -27,6 +27,7 @@ func TestDynamicBucketRegion(t *testing.T) {
 
 	defaultSession, err := Session()
 	require.NoError(t, err)
+
 	defaultRegion := aws.StringValue(defaultSession.Config.Region)
 
 	testCases := []struct {
@@ -74,7 +75,7 @@ func TestDynamicBucketRegion(t *testing.T) {
 	}
 }
 
-func TestSessionWithCustomEndpoint(t *testing.T) {
+func TestSessionWithCustomEndpoint(t *testing.T) { // nolint:paralleltest // Note: requires refactor.
 	os.Setenv("AWS_ENDPOINT", "foobar:1234")
 	os.Setenv("AWS_DISABLE_SSL", "true")
 	os.Setenv("HELM_S3_REGION", "us-west-2")
@@ -95,6 +96,7 @@ func TestSessionWithCustomEndpoint(t *testing.T) {
 	if *s.Config.Region != "us-west-2" {
 		t.Fatalf("Expected to set us-west-2 region")
 	}
+
 	os.Unsetenv("AWS_ENDPOINT")
 	os.Unsetenv("AWS_DISABLE_SSL")
 	os.Unsetenv("HELM_S3_REGION")

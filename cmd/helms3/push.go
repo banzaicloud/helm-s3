@@ -60,7 +60,7 @@ func (act pushAction) Run(ctx context.Context) error {
 
 	repoEntry, err := helmutil.LookupRepoEntry(act.repoName)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "looking up repository entry %s failed", act.repoName)
 	}
 
 	sess, err := awsutil.Session(awsutil.DynamicBucketRegion(repoEntry.URL()))

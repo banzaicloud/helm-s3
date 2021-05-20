@@ -110,15 +110,16 @@ func DynamicBucketRegion(s3URL string) SessionOption {
 	}
 }
 
-// Session returns an AWS session as described http://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html
-func Session(opts ...SessionOption) (*session.Session, error) {
+// Session returns an AWS session as described
+// http://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html
+func Session(opts ...SessionOption) (awsSession *session.Session, err error) {
 	disableSSL := false
 	if os.Getenv(awsDisableSSL) == "true" {
 		disableSSL = true
 	}
 
-	so := session.Options{
-		Config: aws.Config{
+	so := session.Options{ // nolint:exhaustivestruct // Note: configuration options.
+		Config: aws.Config{ // nolint:exhaustivestruct // Note: configuration options.
 			DisableSSL:       aws.Bool(disableSSL),
 			S3ForcePathStyle: aws.Bool(true),
 			Endpoint:         aws.String(os.Getenv(awsEndpoint)),
@@ -138,5 +139,10 @@ func Session(opts ...SessionOption) (*session.Session, error) {
 		opt(&so)
 	}
 
-	return session.NewSessionWithOptions(so)
+	awsSession, err = session.NewSessionWithOptions(so)
+	if err != nil {
+		return nil, errors.WrapWithDetails(err, "creating session with options failed, options: %s", so)
+	}
+
+	return awsSession, nil
 }

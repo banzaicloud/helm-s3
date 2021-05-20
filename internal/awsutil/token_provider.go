@@ -17,13 +17,20 @@ package awsutil
 import (
 	"fmt"
 	"os"
+
+	"emperror.dev/errors"
 )
 
 // StderrTokenProvider implements token provider for AWS SDK.
 func StderrTokenProvider() (string, error) {
 	var v string
-	fmt.Fprintf(os.Stderr, "Assume Role MFA token code: ")
-	_, err := fmt.Fscanln(os.Stderr, &v)
 
-	return v, err
+	fmt.Fprintf(os.Stderr, "Assume Role MFA token code: ")
+
+	_, err := fmt.Fscanln(os.Stderr, &v)
+	if err != nil {
+		return "", errors.Wrap(err, "reading assume role MFA token failed")
+	}
+
+	return v, nil
 }
