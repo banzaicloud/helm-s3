@@ -1,41 +1,38 @@
-ARG HELM_VERSION
+ARG GO_VERSION=1.16
+ARG HELM_VERSION=3.5.4
 
-FROM golang:1.15-alpine as build
+FROM golang:${GO_VERSION}-alpine as build
 
-ARG PLUGIN_VERSION
+ARG ARCH=amd64
+ARG HELM_PLUGIN_VERSION=local
+ARG YQ_VERSION=v4.7.1
+
+ENV YQ_BINARY="yq_linux_${ARCH}"
+
+RUN apk add --no-cache \
+    git \
+    wget
+
+RUN wget https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/${YQ_BINARY} -O /usr/bin/yq && \
+    chmod +x /usr/bin/yq
 
 WORKDIR /workspace/helm-s3
 
 COPY . .
 
-RUN apk add --no-cache git
+# Note: Using argument version.
+#
+# Note: Not using install hooks in container context.
+RUN yq eval --inplace ".version = \"${HELM_PLUGIN_VERSION}\"" plugin.yaml && \
+    yq eval --inplace "del(.hooks)" plugin.yaml
 
-RUN go build -o bin/helms3 \
-    -mod=vendor \
-    -ldflags "-X main.version=${PLUGIN_VERSION}" \
-    ./cmd/helms3
-
-# Correct the plugin manifest with docker-specific fixes:
-# - remove hooks, because we are building everything locally from source
-# - update version
-RUN sed "/^hooks:/,+2 d" plugin.yaml > plugin.yaml.fixed \
-    && sed -i "s/^version:.*$/version: ${PLUGIN_VERSION}/" plugin.yaml.fixed
+RUN mkdir -p ./bin
+RUN go build -ldflags "-X main.version=${HELM_PLUGIN_VERSION}" -o ./bin/helms3 ./cmd/helms3
 
 FROM alpine/helm:${HELM_VERSION}
 
-# Build-time metadata as defined at http://label-schema.org
-ARG BUILD_DATE
-ARG VCS_REF
-ARG PLUGIN_VERSION
-LABEL org.label-schema.build-date=$BUILD_DATE \
-      org.label-schema.name="helm-s3" \
-      org.label-schema.description="The Helm plugin that provides S3 protocol support and allows to use AWS S3 as a chart repository." \
-      org.label-schema.vcs-ref=$VCS_REF \
-      org.label-schema.vcs-url="https://github.com/hypnoglow/helm-s3" \
-      org.label-schema.version=$PLUGIN_VERSION \
-      org.label-schema.schema-version="1.0"
-
-COPY --from=build /workspace/helm-s3/plugin.yaml.fixed /root/.helm/cache/plugins/helm-s3/plugin.yaml
+COPY --from=build /workspace/helm-s3/LICENSE /root/.helm/cache/plugins/helm-s3/LICENSE
+COPY --from=build /workspace/helm-s3/plugin.yaml /root/.helm/cache/plugins/helm-s3/plugin.yaml
 COPY --from=build /workspace/helm-s3/bin/helms3 /root/.helm/cache/plugins/helm-s3/bin/helms3
 
 RUN mkdir -p /root/.helm/plugins \

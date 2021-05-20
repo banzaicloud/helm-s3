@@ -3,7 +3,7 @@ package helmutil
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIsHelm3(t *testing.T) {
@@ -91,7 +91,7 @@ func TestIsHelm3(t *testing.T) {
 			teardown := tc.setup()
 			defer teardown()
 
-			assert.Equal(t, tc.isHelm3, IsHelm3())
+			require.Equal(t, tc.isHelm3, IsHelm3())
 		})
 	}
 }

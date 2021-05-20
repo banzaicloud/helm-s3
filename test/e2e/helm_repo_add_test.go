@@ -12,18 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package awsutil
+package e2e
 
 import (
-	"fmt"
-	"os"
+	"path"
 )
 
-// StderrTokenProvider implements token provider for AWS SDK.
-func StderrTokenProvider() (string, error) {
-	var v string
-	fmt.Fprintf(os.Stderr, "Assume Role MFA token code: ")
-	_, err := fmt.Fscanln(os.Stderr, &v)
+func (testSuite *EndToEndSuite) TestHelmRepoAdd() {
+	testName := path.Base(testSuite.T().Name())
 
-	return v, err
+	bucketName := testSuite.AWSS3BucketName(testName)
+
+	repositoryName := bucketName
+	repositoryURI := helmS3RepositoryURI(bucketName)
+
+	// Note: undoing test setup.
+	removeHelmRepository(testSuite.T(), repositoryName)
+
+	addHelmRepository(testSuite.T(), repositoryName, repositoryURI)
 }

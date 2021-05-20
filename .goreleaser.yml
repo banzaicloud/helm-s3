@@ -1,6 +1,16 @@
+project_name: helm-s3
+
 builds:
-  - main: ./cmd/helms3
+  - id: helm-s3
+    dir: "."
+    main: ./cmd/helms3
     binary: ./bin/helms3
+    flags:
+      - -trimpath
+    asmflags: []
+    gcflags: []
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.CommitDate}} -X main.builtBy=goreleaser
     env:
       - CGO_ENABLED=0
     goos:
@@ -8,10 +18,102 @@ builds:
       - linux
     goarch:
       - amd64
+      - arm64
+    goarm: []
+    gomips: []
+    gobinary: go
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    hooks:
+      pre: []
+      post: []
+    skip: false
 
 archives:
-  - id: tar
+  - id: archive
+    builds:
+      - helm-s3
     format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}"
+    wrap_in_directory: false
     files:
       - LICENSE
       - plugin.yaml
+    allow_different_binary_count: false
+
+  - id: binary
+    builds:
+      - helm-s3
+    format: binary
+    name_template: "{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}"
+    wrap_in_directory: false
+    files:
+      - binary_only* # Note: workaround to exclude default files such as LICENSE.
+    allow_different_binary_count: false
+
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_sha512_checksums.txt"
+  algorithm: sha512
+  ids: [] # Note: all.
+  disable: false
+
+# Note: currently not working with replacements.
+# gomod:
+#   proxy: true
+#   env:
+#     - GOPROXY=https://proxy.golang.org,direct
+#     - GOSUMDB=sum.golang.org
+#   gobinary: go
+
+snapshot:
+  name_template: "{{ .Tag }}-{{ .ShortCommit }}"
+#
+# Note: container and manifest building and pushing is done in CI. This
+# reference is kept for intent "documentation" purposes.
+# dockers:
+#   - goos: linux
+#     goarch: amd64
+#     goarm: ""
+#     ids:
+#       - plugin
+#     image_templates:
+#       - ghcr.io/banzaicloud/{{ .ProjectName }}:{{ .Tag }}-amd64
+#     skip_push: false
+#     dockerfile: Dockerfile
+#     use_buildx: false
+#     build_flag_templates:
+#       - --pull
+#       - --label=org.opencontainers.image.created={{.Date}}
+#       - --label=org.opencontainers.image.title={{.ProjectName}}
+#       - --label=org.opencontainers.image.revision={{.FullCommit}}
+#       - --label=org.opencontainers.image.version={{.Version}}
+#     extra_files:
+#       - LICENSE
+#       - plugin.yaml
+
+# #   - goos: linux
+# #     goarch: arm64
+# #     goarm: ""
+# #     ids:
+# #       - plugin
+# #     image_templates:
+# #       - ghcr.io/banzaicloud/{{ .ProjectName }}:{{ .Tag }}-arm64
+# #     skip_push: false
+# #     dockerfile: Dockerfile
+# #     use_buildx: false
+# #     build_flag_templates:
+# #       - --pull
+# #       - --label=org.opencontainers.image.created={{.Date}}
+# #       - --label=org.opencontainers.image.title={{.ProjectName}}
+# #       - --label=org.opencontainers.image.revision={{.FullCommit}}
+# #       - --label=org.opencontainers.image.version={{.Version}}
+# #     extra_files:
+# #       - LICENSE
+# #       - plugin.yaml
+#
+# docker_manifests:
+#   - name_template: banzaicloud/{{ .ProjectName }}:{{ .Tag }}
+#     image_templates:
+#       - ghcr.io/banzaicloud/{{ .ProjectName }}:{{ .Tag }}-amd64
+# #       - ghcr.io/banzaicloud/{{ .ProjectName }}:{{ .Tag }}-arm64
+#     create_flags: []
+#     push_flags: []

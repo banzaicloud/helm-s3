@@ -85,7 +85,7 @@ func (idx *IndexV2) AddOrReplace(metadata interface{}, filename, baseURL, digest
 		}
 	}
 
-	// Otherwise just add to the list of versions
+	// Otherwise just add to the list of versions.
 	idx.index.Entries[md.Name] = append(entry, cr)
 	return nil
 }

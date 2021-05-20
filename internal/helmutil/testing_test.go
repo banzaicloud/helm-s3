@@ -1,12 +1,11 @@
 package helmutil
 
-// this file contains utilities for testing code in this package.
+// This file contains utilities for testing code in this package.
 
 import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -56,8 +55,8 @@ func mockEnvs(t *testing.T, nameValue ...string) func() {
 
 func assertError(t *testing.T, err error, expected bool) {
 	if expected {
-		assert.Error(t, err)
+		require.Error(t, err)
 	} else {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }

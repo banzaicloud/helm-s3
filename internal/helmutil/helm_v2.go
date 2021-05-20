@@ -19,7 +19,7 @@ func setupHelm2() {
 var (
 	helm2Home helmpath.Home
 
-	// func that loads helm repo file.
+	// Func that loads helm repo file.
 	// Defined for testing purposes.
 	helm2LoadRepoFile func(path string) (*repo.RepoFile, error)
 )

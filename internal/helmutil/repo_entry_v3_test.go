@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v3/pkg/cli"
-
-	"github.com/stretchr/testify/assert"
 	"helm.sh/helm/v3/pkg/repo"
 )
 
@@ -38,7 +37,7 @@ func TestRepoEntryV3_URL(t *testing.T) {
 	for name, tc := range testCases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, tc.url, tc.entry.URL())
+			require.Equal(t, tc.url, tc.entry.URL())
 		})
 	}
 }
@@ -71,13 +70,13 @@ func TestRepoEntryV3_IndexURL(t *testing.T) {
 	for name, tc := range testCases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, tc.url, tc.entry.IndexURL())
+			require.Equal(t, tc.url, tc.entry.IndexURL())
 		})
 	}
 }
 
 func TestRepoEntryV3_CacheFile(t *testing.T) {
-	// mock helm3 env
+	// Mock helm3 env.
 	helm3Env = cli.New()
 	helm3Env.RepositoryCache = "/home/foo/.cache/helm/repository"
 
@@ -126,7 +125,7 @@ func TestRepoEntryV3_CacheFile(t *testing.T) {
 	for name, tc := range testCases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, tc.cacheFile, tc.entry.CacheFile())
+			require.Equal(t, tc.cacheFile, tc.entry.CacheFile())
 		})
 	}
 }
@@ -211,7 +210,7 @@ func TestLookupV3(t *testing.T) {
 
 			entry, err := lookupV3(tc.name)
 			assertError(t, err, tc.expectError)
-			assert.Equal(t, tc.expectedEntry, entry)
+			require.Equal(t, tc.expectedEntry, entry)
 		})
 	}
 }

@@ -1,4 +1,4 @@
-module github.com/hypnoglow/helm-s3
+module github.com/banzaicloud/helm-s3
 
 go 1.15
 
@@ -9,16 +9,22 @@ replace (
 )
 
 require (
+	emperror.dev/errors v0.8.0
 	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/semver/v3 v3.1.1
-	github.com/aws/aws-sdk-go v1.37.18
+	github.com/alecthomas/units v0.0.0-20210208195552-ff826a37aa15 // indirect
+	github.com/aws/aws-sdk-go v1.38.35
 	github.com/ghodss/yaml v1.0.0
-	github.com/google/go-cmp v0.5.2
-	github.com/minio/minio-go/v6 v6.0.40
+	github.com/google/go-cmp v0.5.5 // indirect
+	github.com/google/uuid v1.1.2
+	github.com/mitchellh/mapstructure v1.4.1
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.0
+	go.uber.org/multierr v1.7.0 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
-	helm.sh/helm/v3 v3.5.2
+	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+	helm.sh/helm/v3 v3.5.4
 	k8s.io/helm v2.17.0+incompatible
 	sigs.k8s.io/yaml v1.2.0
 )

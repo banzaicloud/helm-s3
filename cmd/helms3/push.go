@@ -1,3 +1,17 @@
+// Copyright © 2021 Banzai Cloud
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
@@ -7,9 +21,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/hypnoglow/helm-s3/internal/awss3"
-	"github.com/hypnoglow/helm-s3/internal/awsutil"
-	"github.com/hypnoglow/helm-s3/internal/helmutil"
+	"github.com/banzaicloud/helm-s3/internal/awss3"
+	"github.com/banzaicloud/helm-s3/internal/awsutil"
+	"github.com/banzaicloud/helm-s3/internal/helmutil"
 )
 
 var (
@@ -23,12 +37,12 @@ var (
 )
 
 type pushAction struct {
-	// required parameters
+	// Required parameters.
 
 	chartPath string
 	repoName  string
 
-	// optional parameters and flags
+	// Optional parameters and flags.
 
 	force          bool
 	dryRun         bool
@@ -76,7 +90,7 @@ func (act pushAction) Run(ctx context.Context) error {
 	}
 
 	if cachedIndex, err := helmutil.LoadIndex(repoEntry.CacheFile()); err == nil {
-		// if cached index exists, check if the same chart version exists in it.
+		// If cached index exists, check if the same chart version exists in it.
 		if cachedIndex.Has(chart.Name(), chart.Version()) {
 			if act.ignoreIfExists {
 				return nil
@@ -85,7 +99,7 @@ func (act pushAction) Run(ctx context.Context) error {
 				return ErrChartExists
 			}
 
-			// fallthrough on --force
+			// Fallthrough on --force.
 		}
 	}
 
@@ -112,7 +126,7 @@ func (act pushAction) Run(ctx context.Context) error {
 			return ErrChartExists
 		}
 
-		// fallthrough on --force
+		// Fallthrough on --force.
 	}
 
 	if !act.dryRun {

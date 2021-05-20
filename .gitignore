@@ -1,10 +1,8 @@
-bin/*
-tmp
-releases
-vendor
+# Note: local build.
+bin/**
 
-.env
-coverage.txt
+# Note: goreleaser artifacts.
+dist/**
 
-.idea
-*.iml
+# Note: optional local dependency cache.
+vendor/**

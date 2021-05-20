@@ -16,7 +16,7 @@ func setupHelm3() {
 var (
 	helm3Env *cli.EnvSettings
 
-	// func that loads helm repo file.
+	// Func that loads helm repo file.
 	// Defined for testing purposes.
 	helm3LoadRepoFile func(path string) (*repo.File, error)
 )
