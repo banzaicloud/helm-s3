@@ -66,6 +66,7 @@ jobs:
 
   check-git:
     name: Check Git constraints
+    if: ${{ github.event_name != 'schedule' }}
     needs:
       - configure-environment
     runs-on: ${{ matrix.os }}
