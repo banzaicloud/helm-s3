@@ -1,5 +1,5 @@
+ARG ALPINE_VERSION=3.13
 ARG GO_VERSION=1.16
-ARG HELM_VERSION=3.5.4
 
 FROM golang:${GO_VERSION}-alpine as build
 
@@ -29,14 +29,23 @@ RUN yq eval --inplace ".version = \"${HELM_PLUGIN_VERSION}\"" plugin.yaml && \
 RUN mkdir -p ./bin
 RUN go build -ldflags "-X main.version=${HELM_PLUGIN_VERSION}" -o ./bin/helms3 ./cmd/helms3
 
-FROM alpine/helm:${HELM_VERSION}
+FROM alpine:${ALPINE_VERSION} as helm
+
+ARG HELM_VERSION=3.6.0
+
+RUN apk add --update curl
+
+# Install Helm binary for plugin installing.
+RUN curl -L -s https://get.helm.sh/helm-v3.6.0-linux-amd64.tar.gz | tar -C /tmp -xvz && \
+    mv /tmp/linux-amd64/helm /usr/local/bin/helm && \
+    chmod +x /usr/local/bin/helm
+
+FROM alpine:${ALPINE_VERSION}
 
 COPY --from=build /workspace/helm-s3/LICENSE /root/.helm/cache/plugins/helm-s3/LICENSE
 COPY --from=build /workspace/helm-s3/plugin.yaml /root/.helm/cache/plugins/helm-s3/plugin.yaml
 COPY --from=build /workspace/helm-s3/bin/helms3 /root/.helm/cache/plugins/helm-s3/bin/helms3
+COPY --from=helm /usr/local/bin/helm /usr/local/bin/helm
 
 RUN mkdir -p /root/.helm/plugins \
     && helm plugin install /root/.helm/cache/plugins/helm-s3
-
-ENTRYPOINT []
-CMD []
