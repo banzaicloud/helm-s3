@@ -1,6 +1,7 @@
-[![License](https://img.shields.io/github/license/banzaicloud/helm-s3.svg)](https://github.com/banzaicloud/helm-s3/tree/master/LICENSE)
-[![Release](https://img.shields.io/github/v/release/banzaicloud/helm-s3?sort=semver)](https://github.com/banzaicloud/helm-s3/releases)
+[![license](https://img.shields.io/github/license/banzaicloud/helm-s3.svg)](https://github.com/banzaicloud/helm-s3/tree/master/LICENSE)
+[![release](https://img.shields.io/github/v/release/banzaicloud/helm-s3?sort=semver)](https://github.com/banzaicloud/helm-s3/releases)
 [![CI](https://github.com/banzaicloud/helm-s3/actions/workflows/ci.yml/badge.svg)](https://github.com/banzaicloud/helm-s3/actions/workflows/ci.yml)
+[![Release](https://github.com/banzaicloud/helm-s3/actions/workflows/release.yml/badge.svg)](https://github.com/banzaicloud/helm-s3/actions/workflows/release.yml)
 
 The Helm plugin that provides Amazon S3 protocol support.
 
