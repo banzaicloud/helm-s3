@@ -31,13 +31,14 @@ jobs:
       goreleaser-v0-version: ${{ steps.set-goreleaser-v0-version.outputs.goreleaser-v0-version }}
       helm-v2-version: ${{ steps.set-helm-v2-version.outputs.helm-v2-version }}
       helm-v3-version: ${{ steps.set-helm-v3-version.outputs.helm-v3-version }}
+      image-name: "banzaicloud/helm-s3"
     steps:
       - name: Check out code
         uses: actions/checkout@v2
 
       - name: Set Git refname
         id: set-git-refname
-        run: echo ::set-output name=git-refname::$(echo "${{ github.ref }}" | sed -E 's@refs/(heads|tags)/@@g')
+        run: echo ::set-output name=git-refname::$(echo "${{ github.ref }}" | sed -E 's@refs/(heads|pull|tags)/@@g')
 
       - name: Set Alpine v3 version
         id: set-alpine-v3-version
@@ -49,7 +50,7 @@ jobs:
 
       - name: Set GoReleaser v0 version
         id: set-goreleaser-v0-version
-        run: echo ::set-output name=goreleaser-v0-version::$(make get-goreleaser-versions-json | jq --raw-output '. | map(select(startswith("1."))) | last')
+        run: echo ::set-output name=goreleaser-v0-version::$(make get-goreleaser-versions-json | jq --raw-output '. | map(select(startswith("0."))) | last')
 
       - name: Set Helm v2 version
         id: set-helm-v2-version
@@ -69,36 +70,31 @@ jobs:
       - name: Wait for CI workflow to complete
         run: |
           check_interval_seconds=10
+          endpoint="repos/${{ needs.configure-environment.outputs.github-organization }}/${{ needs.configure-environment.outputs.github-repository }}/actions/runs?branch=${{ needs.configure-environment.outputs.git-refname }}&event=${{ github.event_name }}"
           initial_wait_time_seconds=10
-          organization=${{ needs.configure-environment.outputs.github-organization }}
-          ref_basename=${{ needs.configure-environment.outputs.git-refname }}
-          repository=${{ needs.configure-environment.outputs.github-repository }}
 
           echo "${{ github.token }}" | gh auth login --with-token
 
           # Note: waiting to ensure simultaneous workflow triggers have a chance to complete before accessing parallel workflow.
           sleep ${initial_wait_time_seconds}
 
-          ci_workflow_run=$(gh api "repos/${organization}/${repository}/actions/runs?branch=${ref_basename}&event=push" | jq '[ .workflow_runs[] | select((.name == "${{ needs.configure-environment.outputs.ci-workflow-name }}") and (.head_sha == "${{ github.sha }}")) ] | first')
+          ci_workflow_run=$(gh api "${endpoint}" | jq '[ .workflow_runs[] | select((.name == "${{ needs.configure-environment.outputs.ci-workflow-name }}") and (.head_sha == "${{ github.sha }}")) ] | first')
           echo "${ci_workflow_run}" | jq
 
           while echo "${ci_workflow_run}" | jq --exit-status '.status != "completed"' &>/dev/null;do
             echo "Waiting for the workflow to complete"
             sleep ${check_interval_seconds}
 
-            ci_workflow_run=$(gh api "repos/${organization}/${repository}/actions/runs?branch=${ref_basename}&event=push" | jq '[ .workflow_runs[] | select((.name == "${{ needs.configure-environment.outputs.ci-workflow-name }}") and (.head_sha == "${{ github.sha }}")) ] | first')
+            ci_workflow_run=$(gh api "${endpoint}" | jq '[ .workflow_runs[] | select((.name == "${{ needs.configure-environment.outputs.ci-workflow-name }}") and (.head_sha == "${{ github.sha }}")) ] | first')
             echo "${ci_workflow_run}" | jq
           done
 
       - name: Check successful CI workflow before release
         run: |
-          organization=${{ needs.configure-environment.outputs.github-organization }}
-          ref_basename=${{ needs.configure-environment.outputs.git-refname }}
-          repository=${{ needs.configure-environment.outputs.github-repository }}
-
           echo "${{ github.token }}" | gh auth login --with-token
 
-          ci_workflow_run=$(gh api "repos/${organization}/${repository}/actions/runs?branch=${ref_basename}&event=push" | jq '[ .workflow_runs[] | select((.name == "${{ needs.configure-environment.outputs.ci-workflow-name }}") and (.head_sha == "${{ github.sha }}")) ] | first')
+          endpoint="repos/${{ needs.configure-environment.outputs.github-organization }}/${{ needs.configure-environment.outputs.github-repository }}/actions/runs?branch=${{ needs.configure-environment.outputs.git-refname }}&event=${{ github.event_name }}"
+          ci_workflow_run=$(gh api "${endpoint}" | jq '[ .workflow_runs[] | select((.name == "${{ needs.configure-environment.outputs.ci-workflow-name }}") and (.head_sha == "${{ github.sha }}")) ] | first')
           echo "${ci_workflow_run}" | jq
 
           echo "${ci_workflow_run}" | jq --exit-status '(.status == "completed") and (.conclusion == "success")'
@@ -245,7 +241,7 @@ jobs:
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
-          version: ${{ needs.configure-environment.outputs.goreleaser-v0-version }}
+          version: v${{ needs.configure-environment.outputs.goreleaser-v0-version }}
           args: release --config .goreleaser.yml --release-notes /tmp/release_notes.md --rm-dist
           workdir: "."
           install-only: false
