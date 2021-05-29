@@ -209,8 +209,8 @@ jobs:
             ( \
               printf >&2 '%s test coverage decreased compared to %s (default branch) test coverage\n%s (default branch) test coverage: %s\n%s test coverage: %s\n\n' \
                 "${{ needs.configure-environment.outputs.git-refname }}" "${{ needs.configure-environment.outputs.git-default-branch }}" \
-                "${{ needs.configure-environment.outputs.git-default-branch }}" "${default_test_coverage}" ; \
-                "${{ needs.configure-environment.outputs.git-refname }}" "${current_test_coverage}" \
+                "${{ needs.configure-environment.outputs.git-default-branch }}" "${default_test_coverage}" \
+                "${{ needs.configure-environment.outputs.git-refname }}" "${current_test_coverage}" ; \
               exit 1 ; \
             )
 
