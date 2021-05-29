@@ -20,7 +20,7 @@ on:
 jobs:
   configure-environment:
     name: Configure environment
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest # Note: OS independent job. # TODO: until static global env can be used through ${{ env }}.
     outputs:
       git-default-branch: origin/main
       git-refname: ${{ steps.set-git-refname.outputs.git-refname }}
@@ -28,18 +28,13 @@ jobs:
       github-api-version: "3"
       github-organization: banzaicloud
       github-repository: helm-s3
-      github-runner-default-os-json: '["ubuntu-latest"]' # Note: used for OS-independent jobs.
+      github-runner-default-os: ubuntu-latest # Note: used for OS-independent jobs.
       github-runner-oses-json: '["ubuntu-latest"]'
-      go-latest-3-minor-versions-json: ${{ steps.set-go-latest-3-minor-versions-json.outputs.go-latest-3-minor-versions-json }}
-      go-latest-version-json: ${{ steps.set-go-latest-version-json.outputs.go-latest-version-json }}
+      go-v1-version: ${{ steps.set-go-v1-version.outputs.go-v1-version }}
       goflags: -mod=readonly
-      golangci-lint-version: v1.40.1
-      helm-latest-version-json: ${{ steps.set-helm-latest-version-json.outputs.helm-latest-version-json }}
-      helm-versions-json: ${{ steps.set-helm-versions-json.outputs.helm-versions-json }}
-    strategy:
-      fail-fast: true
-      matrix:
-        os: ["ubuntu-latest"] # Note: OS independent job. # TODO: until static global env can be used through ${{ env }}.
+      golangci-lint-v1-version: ${{ steps.set-golangci-lint-v1-version.outputs.golangci-lint-v1-version }}
+      helm-v2-version: ${{ steps.set-helm-v2-version.outputs.helm-v2-version }}
+      helm-v3-version: ${{ steps.set-helm-v3-version.outputs.helm-v3-version }}
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -48,32 +43,28 @@ jobs:
         id: set-git-refname
         run: echo ::set-output name=git-refname::$(echo "${{ github.ref }}" | sed -E 's@refs/(heads|pull|tags)/@@g')
 
-      - name: Set Go latest 3 minor versions JSON array
-        id: set-go-latest-3-minor-versions-json
-        run: echo ::set-output name=go-latest-3-minor-versions-json::$(make get-go-latest-3-minor-versions-json)
+      - name: Set Go v1 version
+        id: set-go-v1-version
+        run: echo ::set-output name=go-v1-version::$(make get-go-versions-json | jq --raw-output '. | map(select(startswith("1."))) | last')
 
-      - name: Set Go latest version JSON array
-        id: set-go-latest-version-json
-        run: echo ::set-output name=go-latest-version-json::$(make get-go-latest-version-json)
+      - name: Set golangci-lint v1 version
+        id: set-golangci-lint-v1-version
+        run: echo ::set-output name=golangci-lint-v1-version::$(make get-golangci-lint-versions-json | jq --raw-output '. | map(select(startswith("1."))) | last')
 
-      - name: Set Helm latest version JSON string
-        id: set-helm-latest-version-json
-        run: echo ::set-output name=helm-latest-version-json::$(make get-helm-latest-version-json)
+      - name: Set Helm v2 version
+        id: set-helm-v2-version
+        run: echo ::set-output name=helm-v2-version::$(make get-helm-versions-json | jq --raw-output '. | map(select(startswith("2."))) | last')
 
-      - name: Set Helm versions JSON array
-        id: set-helm-versions-json
-        run: echo ::set-output name=helm-versions-json::[\"v2.17.0\", \"${{ fromJSON(steps.set-helm-latest-version-json.outputs.helm-latest-version-json) }}\"]
+      - name: Set Helm v3 version
+        id: set-helm-v3-version
+        run: echo ::set-output name=helm-v3-version::$(make get-helm-versions-json | jq --raw-output '. | map(select(startswith("3."))) | last')
 
   check-git:
     name: Check Git constraints
     if: ${{ github.event_name != 'schedule' }}
     needs:
       - configure-environment
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: true
-      matrix:
-        os: ${{ fromJSON(needs.configure-environment.outputs.github-runner-default-os-json) }} # Note: OS independent job.
+    runs-on: ${{ needs.configure-environment.outputs.github-runner-default-os }} # Note: OS independent job.
     steps:
       - name: Check unnecessary (rebase-removable) auto-generated merge commits
         uses: gsactions/commit-message-checker@v1
@@ -89,12 +80,7 @@ jobs:
     name: Analyze code
     needs:
       - configure-environment
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: true
-      matrix:
-        go-version: ${{ fromJSON(needs.configure-environment.outputs.go-latest-version-json) }} # Note: Go version independent job.
-        os: ${{ fromJSON(needs.configure-environment.outputs.github-runner-default-os-json) }} # Note: OS independent job.
+    runs-on: ${{ needs.configure-environment.outputs.github-runner-default-os }} # Note: OS independent job.
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -104,7 +90,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
-          version: ${{ needs.configure-environment.outputs.golangci-lint-version }}
+          version: v${{ needs.configure-environment.outputs.golangci-lint-v1-version }}
           args: --new-from-rev ${{ needs.configure-environment.outputs.git-default-branch }} --timeout 10m
 
   build:
@@ -115,7 +101,6 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        go-version: ${{ fromJSON(needs.configure-environment.outputs.go-latest-3-minor-versions-json) }}
         os: ${{ fromJSON(needs.configure-environment.outputs.github-runner-oses-json) }}
     steps:
       - name: Check out code
@@ -124,16 +109,16 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: ${{ needs.configure-environment.outputs.go-v1-version }}
 
       - name: Cache Go module dependencies
         id: cache-go-module-dependencies
         uses: actions/cache@v2
         with:
           path: ~/go/pkg/mod
-          key: go-mod-cache-${{ runner.os }}-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+          key: go-mod-cache-${{ runner.os }}-${{ needs.configure-environment.outputs.go-v1-version }}-${{ hashFiles('**/go.sum') }}
           restore-keys: |
-            go-mod-cache-${{ runner.os }}-${{ matrix.go-version }}
+            go-mod-cache-${{ runner.os }}-${{ needs.configure-environment.outputs.go-v1-version }}
             go-mod-cache-${{ runner.os }}
             go-mod-cache
 
@@ -146,7 +131,7 @@ jobs:
       - name: Upload project binaries artifact
         uses: actions/upload-artifact@v2
         with:
-          name: go-bins-${{ runner.os }}-${{ matrix.go-version }}
+          name: go-bins-${{ runner.os }}-${{ needs.configure-environment.outputs.go-v1-version }}
           path: bin
           if-no-files-found: error
           retention-days: 1
@@ -160,7 +145,6 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        go-version: ${{ fromJSON(needs.configure-environment.outputs.go-latest-3-minor-versions-json) }}
         os: ${{ fromJSON(needs.configure-environment.outputs.github-runner-oses-json) }}
     steps:
       - name: Check out code
@@ -169,16 +153,16 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: ${{ needs.configure-environment.outputs.go-v1-version }}
 
       - name: Cache Go module dependencies
         id: cache-go-module-dependencies
         uses: actions/cache@v2
         with:
           path: ~/go/pkg/mod
-          key: go-mod-cache-${{ runner.os }}-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+          key: go-mod-cache-${{ runner.os }}-${{ needs.configure-environment.outputs.go-v1-version }}-${{ hashFiles('**/go.sum') }}
           restore-keys: |
-            go-mod-cache-${{ runner.os }}-${{ matrix.go-version }}
+            go-mod-cache-${{ runner.os }}-${{ needs.configure-environment.outputs.go-v1-version }}
             go-mod-cache-${{ runner.os }}
             go-mod-cache
 
@@ -190,12 +174,7 @@ jobs:
     needs:
       - configure-environment
       - build
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: true
-      matrix:
-        go-version: ${{ fromJSON(needs.configure-environment.outputs.go-latest-version-json) }} # Note: Go version independent job.
-        os: ${{ fromJSON(needs.configure-environment.outputs.github-runner-default-os-json) }} # Note: OS independent job.
+    runs-on: ${{ needs.configure-environment.outputs.github-runner-default-os }} # Note: OS independent job.
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -205,16 +184,16 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: ${{ needs.configure-environment.outputs.go-v1-version }}
 
       - name: Cache Go module dependencies
         id: cache-go-module-dependencies
         uses: actions/cache@v2
         with:
           path: ~/go/pkg/mod
-          key: go-mod-cache-${{ runner.os }}-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+          key: go-mod-cache-${{ runner.os }}-${{ needs.configure-environment.outputs.go-v1-version }}-${{ hashFiles('**/go.sum') }}
           restore-keys: |
-            go-mod-cache-${{ runner.os }}-${{ matrix.go-version }}
+            go-mod-cache-${{ runner.os }}-${{ needs.configure-environment.outputs.go-v1-version }}
             go-mod-cache-${{ runner.os }}
             go-mod-cache
 
@@ -225,8 +204,8 @@ jobs:
           git checkout ${{ needs.configure-environment.outputs.git-default-branch }}
           default_test_coverage=$(make test-coverage|| echo "{}")
 
-          jq --argjson CURRENT_COVERAGE "${current_test_coverage}" --argjson DEFAULT_COVERAGE "${default_test_coverage}" --exit-status --null-input \
-            '$CURRENT_COVERAGE | keys | all(. as $key | ($DEFAULT_COVERAGE[$key] // 0.0) <= $CURRENT_COVERAGE[$key])' >/dev/null || \
+          jq --argjson CURRENT_TEST_COVERAGE "${current_test_coverage}" --argjson DEFAULT_TEST_COVERAGE "${default_test_coverage}" --exit-status --null-input \
+            '$CURRENT_TEST_COVERAGE | keys | all(. as $key | ($DEFAULT_TEST_COVERAGE[$key] // 0.0) <= $CURRENT_TEST_COVERAGE[$key])' >/dev/null || \
             ( \
               printf >&2 '%s test coverage decreased compared to %s (default branch) test coverage\n%s (default branch) test coverage: %s\n%s test coverage: %s\n\n' \
                 "${{ needs.configure-environment.outputs.git-refname }}" "${{ needs.configure-environment.outputs.git-default-branch }}" \
@@ -244,9 +223,10 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        go-version: ${{ fromJSON(needs.configure-environment.outputs.go-latest-version-json) }}
-        helm-version: ${{ fromJSON(needs.configure-environment.outputs.helm-versions-json) }}
         os: ${{ fromJSON(needs.configure-environment.outputs.github-runner-oses-json) }}
+        helm-major-version: # Note: because check names are bound to matrix values and floating versions require a lot of maintenance to keep them required checks on PRs to the default branch.
+          - helmv2
+          - helmv3
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -254,18 +234,53 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: ${{ needs.configure-environment.outputs.go-v1-version }}
+
+      - name: Set Helm version
+        id: set-helm-version
+        run: |
+          case "${{ matrix.helm-major-version }}" in
+          helmv2)
+            echo ::set-output name=helm-version::${{ needs.configure-environment.outputs.helm-v2-version }}
+            ;;
+          helmv3)
+            echo ::set-output name=helm-version::${{ needs.configure-environment.outputs.helm-v3-version }}
+            ;;
+          *)
+            printf >&2 "unsupported Helm major version: %s\n" "${{ matrix.helm-major-version }}"
+
+            exit 1
+            ;;
+          esac
 
       - name: Setup Helm
         run: |
-          helm_archive_name="helm-${{ matrix.helm-version }}-linux-amd64.tar.gz"
+          architecture=$(uname -m)
+          case "${architecture}" in
+          aarch64_be | aarch64 | armv6l | armv7l | armv8b | armv8l)
+            architecture=arm64
+            ;;
+          x86_64)
+            architecture=amd64
+            ;;
+          *)
+            printf >&2 "unsupported architecture: %s\n" "${architecture}"
+
+            exit 1
+            ;;
+          esac
+
+          kernel_name=$(uname -s | tr "[:upper:]" "[:lower:]")
+          helm_archive_name="helm-v${{ steps.set-helm-version.outputs.helm-version }}-${kernel_name}-${architecture}.tar.gz"
+          echo "${helm_archive_name}"
+
           curl -sSL https://get.helm.sh/${helm_archive_name} -o ./${helm_archive_name}
           mkdir -p bin
           tar -xzf ${helm_archive_name} -C bin
-          echo "${{ github.workspace }}/bin/linux-amd64" >> $GITHUB_PATH
+          echo "${{ github.workspace }}/bin/${kernel_name}-${architecture}" >> $GITHUB_PATH
 
       - name: Initialize Helm v2 (required for plugin install before end to end test)
-        if: startsWith(matrix.helm-version, 'v2.')
+        if: endsWith(matrix.helm-major-version, 'v2')
         run: helm init --client-only
 
       - name: Cache Go module dependencies
@@ -273,16 +288,16 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/go/pkg/mod
-          key: go-mod-cache-${{ runner.os }}-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+          key: go-mod-cache-${{ runner.os }}-${{ needs.configure-environment.outputs.go-v1-version }}-${{ hashFiles('**/go.sum') }}
           restore-keys: |
-            go-mod-cache-${{ runner.os }}-${{ matrix.go-version }}
+            go-mod-cache-${{ runner.os }}-${{ needs.configure-environment.outputs.go-v1-version }}
             go-mod-cache-${{ runner.os }}
             go-mod-cache
 
       - name: Download project binaries artifact
         uses: actions/download-artifact@v2
         with:
-          name: go-bins-${{ runner.os }}-${{ matrix.go-version }}
+          name: go-bins-${{ runner.os }}-${{ needs.configure-environment.outputs.go-v1-version }}
           path: bin
 
       - name: Set binary file permissions to executable
@@ -302,11 +317,10 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        go-version: ${{ fromJSON(needs.configure-environment.outputs.go-latest-3-minor-versions-json) }} # Note: for GO version specific artifacts.
         os: ${{ fromJSON(needs.configure-environment.outputs.github-runner-oses-json) }} # Note: for OS specific artifacts.
     steps:
       - name: Remove project binaries artifact
         uses: geekyeggo/delete-artifact@v1
         if: ${{ needs.build.result }} == "success"
         with:
-          name: go-bins-${{ runner.os }}-${{ matrix.go-version }}
+          name: go-bins-${{ runner.os }}-${{ needs.configure-environment.outputs.go-v1-version }}
