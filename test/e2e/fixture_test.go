@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
@@ -187,7 +188,7 @@ func createAWSS3Bucket(t *testing.T, s3Client *s3.S3, bucketName string) {
 }
 
 // createDirectory creates a local directory.
-func createDirectory(t *testing.T, directoryPath string, mode os.FileMode) { // nolint:lll // Note: temporary. // Postpone: replace with fs.FileMode at Go 1.18.
+func createDirectory(t *testing.T, directoryPath string, mode fs.FileMode) { // nolint:lll // Note: temporary. // Postpone: replace with fs.FileMode at Go 1.18.
 	t.Helper()
 
 	require.NoDirExists(t, directoryPath)
@@ -923,7 +924,7 @@ func runCommand(commandAndArguments ...string) (output, errorOutput string, err 
 
 // saveAWSS3ObjectLocally saves the specified object locally to the provided
 // path.
-func saveAWSS3ObjectLocally(t *testing.T, object *s3.GetObjectOutput, filePath string, mode os.FileMode) { // nolint:lll // Note: temporary. // Postpone: replace with fs.FileMode at Go 1.18.
+func saveAWSS3ObjectLocally(t *testing.T, object *s3.GetObjectOutput, filePath string, mode fs.FileMode) { // nolint:lll // Note: temporary. // Postpone: replace with fs.FileMode at Go 1.18.
 	t.Helper()
 
 	data, err := ioutil.ReadAll(object.Body)
