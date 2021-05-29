@@ -170,7 +170,7 @@ test: test-unit test-e2e ## test runs all tests in the repository.
 test-coverage: ## test-coverage generates data about the test coverage percentage of the code.
 	@ go test -cover -covermode atomic $$(go list ./... | grep -v $(GO_ROOT_MODULE_PKG)/test/e2e) | \
 		jq --raw-input --slurp \
-			'[ split("\n") | .[] | select(. != "") | capture("(\\?|ok)\\s+(?<package>\\S+)\\s+([0-9.hmnµs]+\\s+coverage: (?<coverage>[0-9]+.[0-9]+)% of statements|\\[no test files\\])"; "gins") | .coverage = ( .coverage // "0.0" | tonumber ) ] | reduce .[] as $$entry ({}; . + { ($$entry.package): ($$entry.coverage) }) | . as $$coverages | $$coverages * { "average": ( $$coverages | add * 1000 / length | round / 1000 ) }'
+			'[ split("\n") | .[] | select(. != "") | capture("(\\?|ok)\\s+(?<package>\\S+)\\s+((([0-9.hmnµs]+)|(\\(cached\\)))\\s+coverage: (?<coverage>[0-9]+.[0-9]+)% of statements|\\[no test files\\])"; "gins") | .coverage = ( .coverage // "0.0" | tonumber ) ] | reduce .[] as $$entry ({}; . + { ($$entry.package): ($$entry.coverage) }) | . as $$coverages | $$coverages * { "average": ( $$coverages | add * 1000 / length | round / 1000 ) }'
 
 .PHONY: test-unit
 test-unit: ## test-unit runs the unit tests in the repository.
