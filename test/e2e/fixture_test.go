@@ -19,7 +19,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"io/fs"
 	"net/http"
 	"net/http/httputil"
 	"os"
@@ -187,7 +188,7 @@ func createAWSS3Bucket(t *testing.T, s3Client *s3.S3, bucketName string) {
 }
 
 // createDirectory creates a local directory.
-func createDirectory(t *testing.T, directoryPath string, mode os.FileMode) { // nolint:lll // Note: temporary. // Postpone: replace with fs.FileMode at Go 1.18.
+func createDirectory(t *testing.T, directoryPath string, mode fs.FileMode) { // nolint:lll // Note: temporary. // Postpone: replace with fs.FileMode at Go 1.18.
 	t.Helper()
 
 	require.NoDirExists(t, directoryPath)
@@ -664,7 +665,7 @@ func localStackStatus(localStackURL string) (localStackStatusType, error) {
 
 	defer func() { _ = response.Body.Close() }()
 
-	data, err := ioutil.ReadAll(response.Body)
+	data, err := io.ReadAll(response.Body)
 	if err != nil {
 		responseDump, _ := httputil.DumpResponse(response, true)
 
@@ -923,10 +924,10 @@ func runCommand(commandAndArguments ...string) (output, errorOutput string, err 
 
 // saveAWSS3ObjectLocally saves the specified object locally to the provided
 // path.
-func saveAWSS3ObjectLocally(t *testing.T, object *s3.GetObjectOutput, filePath string, mode os.FileMode) { // nolint:lll // Note: temporary. // Postpone: replace with fs.FileMode at Go 1.18.
+func saveAWSS3ObjectLocally(t *testing.T, object *s3.GetObjectOutput, filePath string, mode fs.FileMode) { // nolint:lll // Note: temporary. // Postpone: replace with fs.FileMode at Go 1.18.
 	t.Helper()
 
-	data, err := ioutil.ReadAll(object.Body)
+	data, err := io.ReadAll(object.Body)
 	require.NoError(t, err, "reading AWS object body failed, local path: %s", filePath)
 
 	_, err = os.Stat(path.Dir(filePath))
@@ -934,7 +935,7 @@ func saveAWSS3ObjectLocally(t *testing.T, object *s3.GetObjectOutput, filePath s
 		createDirectory(t, path.Dir(filePath), 0o755) // nolint:gocritic // Note: intentional.
 	}
 
-	err = ioutil.WriteFile(filePath, data, mode)
+	err = os.WriteFile(filePath, data, mode)
 	require.NoError(t, err, "writing file failed, path: %s", filePath)
 }
 

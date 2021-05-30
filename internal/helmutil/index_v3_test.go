@@ -1,9 +1,13 @@
 package helmutil
 
 import (
+	"io/fs"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/repo"
@@ -120,4 +124,246 @@ func TestIndexV3_AddOrReplace(t *testing.T) {
 		require.Equal(t, "http://example.com/charts/foo-0.1.0.tgz", i.index.Entries["foo"][0].URLs[0])
 		require.Equal(t, "sha256:222", i.index.Entries["foo"][0].Digest)
 	})
+}
+
+func TestIndexV3WriteFile(t *testing.T) { // nolint:funlen // Note: table test.
+	t.Parallel()
+
+	type inputType struct {
+		index *IndexV3
+		dest  string
+		mode  fs.FileMode
+	}
+
+	type outputType struct {
+		err                error
+		destinationContent string
+	}
+
+	temporaryDirectory, err := os.MkdirTemp(os.TempDir(), t.Name())
+	require.NoError(t, err)
+
+	testCases := []struct {
+		caseDescription string
+		expectedOutput  outputType
+		input           inputType
+	}{
+		{
+			caseDescription: "empty index, valid destination path -> success",
+			expectedOutput: outputType{
+				err: nil,
+				destinationContent: `apiVersion: v1
+entries: {}
+generated: "0001-01-01T00:00:00Z"
+`,
+			},
+			input: inputType{
+				index: &IndexV3{
+					index: &repo.IndexFile{ // nolint:exhaustivestruct // Note: minimal.
+						APIVersion: repo.APIVersionV1,
+						Generated:  time.Time{},
+						Entries:    map[string]repo.ChartVersions{},
+						PublicKeys: []string{},
+					},
+				},
+				dest: filepath.Join(temporaryDirectory, "empty_index_valid_destination_path.yaml"),
+				mode: fs.ModePerm,
+			},
+		},
+		{
+			caseDescription: "not empty index, single chart, single version, valid destination path -> success",
+			expectedOutput: outputType{
+				err: nil,
+				destinationContent: `apiVersion: v1
+entries:
+  exampleChart:
+  - created: "0001-01-01T00:00:00Z"
+    digest: sha256:0123456789
+    name: example
+    urls:
+    - https://example.com/charts
+    version: 0.1.0
+generated: "0001-01-01T00:00:00Z"
+`,
+			},
+			input: inputType{
+				index: &IndexV3{
+					index: &repo.IndexFile{ // nolint:exhaustivestruct // Note: minimal.
+						APIVersion: repo.APIVersionV1,
+						Generated:  time.Time{},
+						Entries: map[string]repo.ChartVersions{
+							"exampleChart": []*repo.ChartVersion{
+								{
+									URLs: []string{"https://example.com/charts"},
+									Metadata: &chart.Metadata{ // nolint:exhaustivestruct // Note: minimal.
+										Name:    "example",
+										Version: "0.1.0",
+									},
+									Digest:  "sha256:0123456789",
+									Created: time.Time{},
+								},
+							},
+						},
+						PublicKeys: []string{},
+					},
+				},
+				dest: filepath.Join(temporaryDirectory, "not_empty_index_single_chart_single_version_valid_destination_path.yaml"),
+				mode: fs.ModePerm,
+			},
+		},
+		{
+			caseDescription: "not empty index, multiple charts, multiple versions, valid destination path -> success",
+			expectedOutput: outputType{
+				err: nil,
+				destinationContent: `apiVersion: v1
+entries:
+  exampleChart:
+  - created: "0001-01-01T00:00:00Z"
+    digest: sha256:0123456789
+    name: example
+    urls:
+    - https://example.com/charts
+    version: 0.1.0
+  multipleChart:
+  - created: "0001-01-01T00:00:00Z"
+    digest: sha256:1
+    name: multipleExample
+    urls:
+    - https://example.com/charts
+    version: 1.0.0
+  - created: "0001-01-01T00:00:00Z"
+    digest: sha256:2
+    name: multipleExample
+    urls:
+    - https://example.com/charts
+    version: 2.0.0
+generated: "0001-01-01T00:00:00Z"
+`,
+			},
+			input: inputType{
+				index: &IndexV3{
+					index: &repo.IndexFile{ // nolint:exhaustivestruct // Note: minimal.
+						APIVersion: repo.APIVersionV1,
+						Generated:  time.Time{},
+						Entries: map[string]repo.ChartVersions{
+							"exampleChart": []*repo.ChartVersion{
+								{
+									URLs: []string{"https://example.com/charts"},
+									Metadata: &chart.Metadata{ // nolint:exhaustivestruct // Note: minimal.
+										Name:    "example",
+										Version: "0.1.0",
+									},
+									Digest:  "sha256:0123456789",
+									Created: time.Time{},
+								},
+							},
+							"multipleChart": []*repo.ChartVersion{
+								{
+									URLs: []string{"https://example.com/charts"},
+									Metadata: &chart.Metadata{ // nolint:exhaustivestruct // Note: minimal.
+										Name:    "multipleExample",
+										Version: "1.0.0",
+									},
+									Digest:  "sha256:1",
+									Created: time.Time{},
+								},
+								{
+									URLs: []string{"https://example.com/charts"},
+									Metadata: &chart.Metadata{ // nolint:exhaustivestruct // Note: minimal.
+										Name:    "multipleExample",
+										Version: "2.0.0",
+									},
+									Digest:  "sha256:2",
+									Created: time.Time{},
+								},
+							},
+						},
+						PublicKeys: []string{},
+					},
+				},
+				dest: filepath.Join(
+					temporaryDirectory,
+					"not_empty_index_multiple_charts_multiple_versions_valid_destination_path.yaml",
+				),
+				mode: fs.ModePerm,
+			},
+		},
+		{
+			caseDescription: "nil index -> error",
+			expectedOutput: outputType{
+				err:                ErrorNilIndex,
+				destinationContent: "",
+			},
+			input: inputType{
+				index: nil,
+				dest:  filepath.Join(temporaryDirectory, "nil_index.yaml"),
+				mode:  fs.ModePerm,
+			},
+		},
+		{
+			caseDescription: "empty destination path -> error",
+			expectedOutput: outputType{
+				err:                ErrorMissingDestination,
+				destinationContent: "",
+			},
+			input: inputType{
+				index: &IndexV3{
+					index: &repo.IndexFile{}, // nolint:exhaustivestruct // Note: minimal.
+				},
+				dest: "",
+				mode: fs.ModePerm,
+			},
+		},
+		{
+			caseDescription: "write error -> error",
+			expectedOutput: outputType{
+				err: errors.Errorf(
+					"writing index file failed" +
+						": error marshaling into JSON" +
+						": json: unsupported type: map[bool]string",
+				),
+				destinationContent: "",
+			},
+			input: inputType{
+				index: &IndexV3{
+					index: &repo.IndexFile{ // nolint:exhaustivestruct // Note: minimal.
+						ServerInfo: map[string]interface{}{
+							"invalid": map[bool]string{
+								false: "false",
+								true:  "true",
+							},
+						},
+					},
+				},
+				dest: filepath.Join(temporaryDirectory, "write_error_index.yaml"),
+				mode: fs.ModePerm,
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		testCase := testCase
+
+		t.Run(testCase.caseDescription, func(t *testing.T) {
+			t.Parallel()
+
+			actualError := testCase.input.index.WriteFile(testCase.input.dest, testCase.input.mode)
+
+			if testCase.expectedOutput.err == nil {
+				require.NoError(t, actualError)
+				require.FileExists(t, testCase.input.dest)
+
+				fileInfo, err := os.Stat(testCase.input.dest)
+				require.NoError(t, err, "os.Stat() failed on destination file")
+				require.Equal(t, testCase.input.mode, fileInfo.Mode())
+
+				content, err := os.ReadFile(testCase.input.dest)
+				require.NoError(t, err, "os.ReadFile() failed on destination path")
+				require.Equal(t, testCase.expectedOutput.destinationContent, string(content))
+			} else {
+				require.EqualError(t, actualError, testCase.expectedOutput.err.Error(), "")
+				require.NoFileExists(t, testCase.input.dest)
+			}
+		})
+	}
 }

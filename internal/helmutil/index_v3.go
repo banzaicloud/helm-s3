@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"os"
+	"io/fs"
 	"path/filepath"
 	"time"
 
+	"emperror.dev/errors"
 	"github.com/Masterminds/semver/v3"
-	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/repo"
 
@@ -147,8 +147,19 @@ func (idx *IndexV3) Reader() (io.Reader, error) {
 	return bytes.NewReader(b), nil
 }
 
-func (idx *IndexV3) WriteFile(dest string, mode os.FileMode) error {
-	return idx.index.WriteFile(dest, mode)
+func (idx *IndexV3) WriteFile(dest string, mode fs.FileMode) error {
+	if idx == nil ||
+		idx.index == nil {
+		return ErrorNilIndex
+	} else if dest == "" {
+		return ErrorMissingDestination
+	}
+
+	if err := idx.index.WriteFile(dest, mode); err != nil {
+		return errors.WrapWithDetails(err, "writing index file failed", "destination", dest, "mode", mode)
+	}
+
+	return nil
 }
 
 func newIndexV3() *IndexV3 {

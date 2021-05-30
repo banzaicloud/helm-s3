@@ -2,7 +2,7 @@ package helmutil
 
 import (
 	"io"
-	"os"
+	"io/fs"
 )
 
 // Index describes helm chart repo index.
@@ -39,7 +39,7 @@ type Index interface {
 	Reader() (io.Reader, error)
 
 	// WriteFile writes an index file to the given destination path.
-	WriteFile(dest string, mode os.FileMode) error
+	WriteFile(dest string, mode fs.FileMode) error
 }
 
 // NewIndex returns a new Index based either on Helm v2 or Helm v3.
