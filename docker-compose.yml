@@ -12,7 +12,7 @@ services:
             - LOCALSTACK_LAMBDA_EXECUTOR=${LOCALSTACK_LAMBDA_EXECUTOR- }
             - LOCALSTACK_PORT_WEB_UI=${LOCALSTACK_PORT_WEB_UI- }
             - LOCALSTACK_SERVICES=${LOCALSTACK_SERVICES- }
-        image: localstack/localstack:0.12.10
+        image: localstack/localstack:0.12.12
         network_mode: bridge
         ports:
             - "${LOCALSTACK_PORT_WEB_UI-8080}:${LOCALSTACK_PORT_WEB_UI-8080}"
