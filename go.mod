@@ -22,9 +22,8 @@ require (
 	github.com/stretchr/testify v1.7.0
 	go.uber.org/multierr v1.7.0 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
-	helm.sh/helm/v3 v3.5.4
+	helm.sh/helm/v3 v3.6.1
 	k8s.io/helm v2.17.0+incompatible
 	sigs.k8s.io/yaml v1.2.0
 )
