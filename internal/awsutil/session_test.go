@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDynamicBucketRegion(t *testing.T) { 
+func TestDynamicBucketRegion(t *testing.T) {
 	t.Parallel()
 
 	defaultSession, err := Session()
@@ -38,12 +38,12 @@ func TestDynamicBucketRegion(t *testing.T) {
 		{
 			caseDescription:      "existing S3 bucket URL with host only (no key) -> success",
 			expectedBucketRegion: "eu-central-1",
-			inputS3URL:           "s3://eu-test-bucket",
+			inputS3URL:           "s3://eu-central-1-test-bucket",
 		},
 		{
 			caseDescription:      "existing S3 bucket URL with key -> success",
 			expectedBucketRegion: "ap-southeast-2",
-			inputS3URL:           "s3://cn-test-bucket/charts/chart-0.1.2.tgz",
+			inputS3URL:           "s3://ap-southeast-2-test-bucket/charts/chart-0.1.2.tgz",
 		},
 		{
 			caseDescription:      "invalid URL -> failing URI parsing, no effect (default region)",
