@@ -7,7 +7,8 @@ ARG ARCH=amd64
 ARG HELM_PLUGIN_VERSION=local
 ARG YQ_VERSION=v4.7.1
 
-ENV YQ_BINARY="yq_linux_${ARCH}"
+ENV CGO_ENABLED=0 \
+    YQ_BINARY="yq_linux_${ARCH}"
 
 RUN apk add --no-cache \
     git \
