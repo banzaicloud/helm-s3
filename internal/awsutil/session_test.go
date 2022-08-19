@@ -42,8 +42,8 @@ func TestDynamicBucketRegion(t *testing.T) {
 		},
 		{
 			caseDescription:      "existing S3 bucket URL with key -> success",
-			expectedBucketRegion: "ap-southeast-2",
-			inputS3URL:           "s3://ap-southeast-2-test-bucket/charts/chart-0.1.2.tgz",
+			expectedBucketRegion: "ap-southeast-1",
+			inputS3URL:           "s3://ap-southeast-1-test-bucket/charts/chart-0.1.2.tgz",
 		},
 		{
 			caseDescription:      "invalid URL -> failing URI parsing, no effect (default region)",
